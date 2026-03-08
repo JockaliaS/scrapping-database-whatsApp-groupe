@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateKeywords, updateProfile, getWhatsAppQR, getGroups, toggleGroup } from '../services/api';
+import { generateKeywords, updateProfile, connectWhatsApp, getWhatsAppQR, getWhatsAppStatus, getGroups, toggleGroup } from '../services/api';
 import KeywordChips from '../components/KeywordChips';
 
 const STEPS = [
@@ -57,24 +57,74 @@ export default function Onboarding() {
     }
   };
 
-  // Step 3: Poll QR
+  const [waError, setWaError] = useState('');
+  const [waConnecting, setWaConnecting] = useState(false);
+
+  // Step 3: Connect + Poll QR
   useEffect(() => {
     if (step === 3) {
-      const poll = async () => {
+      let cancelled = false;
+
+      const initWhatsApp = async () => {
+        setWaConnecting(true);
+        setWaError('');
+
+        // First check current status
         try {
-          const data = await getWhatsAppQR();
-          setQrCode(data.qr_code || '');
-          setWaStatus(data.status || 'disconnected');
-          if (data.status === 'connected') {
-            clearInterval(qrIntervalRef.current);
+          const status = await getWhatsAppStatus();
+          if (status.status === 'connected') {
+            setWaStatus('connected');
+            setWaConnecting(false);
+            return;
           }
-        } catch {
-          // ignore
+        } catch {}
+
+        // Try to connect (create instance)
+        try {
+          const result = await connectWhatsApp();
+          if (result.qr_code) {
+            setQrCode(result.qr_code);
+          }
+        } catch (err) {
+          setWaError(err.message || 'Erreur de connexion WhatsApp');
+          setWaConnecting(false);
+          // Still try to poll QR in case instance already exists
         }
+
+        setWaConnecting(false);
+
+        // Start polling QR
+        const poll = async () => {
+          if (cancelled) return;
+          try {
+            const data = await getWhatsAppQR();
+            if (data.status === 'connected') {
+              setWaStatus('connected');
+              setQrCode('');
+              clearInterval(qrIntervalRef.current);
+              return;
+            }
+            if (data.status === 'not_configured') {
+              setWaError('Evolution API non configuree. Configurez-la dans les parametres Admin.');
+              clearInterval(qrIntervalRef.current);
+              return;
+            }
+            if (data.qr_code) {
+              setQrCode(data.qr_code);
+              setWaStatus('connecting');
+            }
+          } catch {}
+        };
+
+        poll();
+        qrIntervalRef.current = setInterval(poll, 3000);
       };
-      poll();
-      qrIntervalRef.current = setInterval(poll, 3000);
-      return () => clearInterval(qrIntervalRef.current);
+
+      initWhatsApp();
+      return () => {
+        cancelled = true;
+        clearInterval(qrIntervalRef.current);
+      };
     }
   }, [step]);
 
@@ -294,11 +344,41 @@ export default function Onboarding() {
                   <h3 className="text-2xl font-bold text-slate-900">WhatsApp connecte !</h3>
                   <p className="text-slate-500">Votre compte est pret pour la surveillance.</p>
                 </div>
+              ) : waError ? (
+                <div className="text-center space-y-4 py-8">
+                  <div className="size-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto">
+                    <span className="material-symbols-outlined text-amber-500 text-4xl">warning</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900">Configuration requise</h3>
+                  <p className="text-slate-500 max-w-md">{waError}</p>
+                  <button
+                    onClick={() => { setWaError(''); setStep(3); }}
+                    className="text-primary font-bold text-sm hover:underline"
+                  >
+                    Reessayer
+                  </button>
+                  <p className="text-xs text-slate-400 mt-4">
+                    Vous pouvez passer cette etape et configurer WhatsApp plus tard dans les parametres.
+                  </p>
+                </div>
               ) : (
                 <>
                   <div className="size-64 bg-slate-100 rounded-xl flex items-center justify-center mb-6 border border-slate-200">
                     {qrCode ? (
-                      <img src={qrCode} alt="QR Code WhatsApp" className="w-56 h-56 object-contain" />
+                      typeof qrCode === 'string' && qrCode.startsWith('data:') ? (
+                        <img src={qrCode} alt="QR Code WhatsApp" className="w-56 h-56 object-contain" />
+                      ) : (
+                        <div className="text-center p-4">
+                          <span className="material-symbols-outlined text-primary text-5xl mb-2 block">qr_code_2</span>
+                          <p className="text-xs text-slate-500 font-mono break-all">{String(qrCode).substring(0, 50)}...</p>
+                          <p className="text-sm text-slate-600 mt-2">Scannez avec WhatsApp</p>
+                        </div>
+                      )
+                    ) : waConnecting ? (
+                      <div className="text-center text-slate-400">
+                        <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                        <p className="text-sm">Connexion en cours...</p>
+                      </div>
                     ) : (
                       <div className="text-center text-slate-400">
                         <span className="material-symbols-outlined text-5xl mb-2 block">qr_code_2</span>
