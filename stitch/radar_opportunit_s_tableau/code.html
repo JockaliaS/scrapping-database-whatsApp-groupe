@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RADAR - WhatsApp Opportunity Tracker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#10b774",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#10221b",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background-light text-slate-900 min-h-screen">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-30 w-full border-b border-primary/10 bg-white/80 backdrop-blur-md px-6 py-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="bg-primary text-white p-1.5 rounded-lg">
+<span class="material-symbols-outlined block text-2xl">radar</span>
+</div>
+<h1 class="mono text-xl font-extrabold tracking-tighter text-slate-900">RADAR</h1>
+</div>
+<div class="flex items-center gap-6">
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-semibold text-primary border-b-2 border-primary pb-1" href="#">Opportunités</a>
+<a class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors" href="#">Groupes</a>
+<a class="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors" href="#">Paramètres</a>
+</nav>
+<div class="h-6 w-px bg-slate-200"></div>
+<div class="flex items-center gap-4">
+<button class="text-xs font-bold text-slate-500 hover:text-primary transition-colors mono">FR / EN</button>
+<div class="flex items-center gap-3 pl-2">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-bold text-slate-900">Alexandre M.</p>
+<p class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Admin</p>
+</div>
+<div class="size-10 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center overflow-hidden">
+<img alt="User avatar" data-alt="User profile avatar illustration" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbm6-Z6ayTyfMqfA7utMYs95qVR3auk53WS38vW7uYYJc-wL0MsueUbl0Y0toI4QTnQddCBuVTr59u8DiiHt-FtgEozVaPkRHMe9rg6NPyiFaAjTcQ-tsOkvkWpZAgZ6EER8EqleIOrqSthRHjypL5cynjFQe8M3_rwzQo8JNkiLeZg69rXFAI9688eCIGaeBznNmNodjUNCC1BZhOShd44mrxB2Y4aba2sozZc0lDGzK_VR2vkMO7FEp16-_xqaNIT78AI6Rg5iHd"/>
+</div>
+</div>
+</div>
+</div>
+</header>
+<main class="flex h-[calc(100vh-65px)] overflow-hidden">
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+<!-- Page Header & Filters -->
+<div class="p-6 pb-0 space-y-6 bg-white border-b border-slate-100">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex items-baseline gap-3">
+<h2 class="text-2xl font-black tracking-tight text-slate-900">Opportunités</h2>
+<span class="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold mono">1,284 total</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-lg transition-all">
+<span class="material-symbols-outlined text-lg">download</span>
+                            Exporter (CSV)
+                        </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-lg shadow-lg shadow-primary/20 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-lg">add</span>
+                            Nouvelle Alerte
+                        </button>
+</div>
+</div>
+<!-- Filter Controls -->
+<div class="flex flex-wrap items-center gap-3 pb-6">
+<div class="relative flex-1 min-w-[240px]">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-slate-50 border-slate-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm transition-all" placeholder="Rechercher un contact, un message..." type="text"/>
+</div>
+<button class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-white transition-all">
+<span class="material-symbols-outlined text-lg">calendar_today</span>
+                        7 derniers jours
+                        <span class="material-symbols-outlined text-lg">expand_more</span>
+</button>
+<button class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-white transition-all">
+<span class="material-symbols-outlined text-lg">group</span>
+                        Groupes (4)
+                        <span class="material-symbols-outlined text-lg">expand_more</span>
+</button>
+<div class="flex items-center gap-4 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+<span class="text-xs font-bold text-slate-400 uppercase tracking-tighter">Score</span>
+<div class="w-32 h-1.5 bg-slate-200 rounded-full relative">
+<div class="absolute inset-y-0 left-0 bg-primary rounded-full" style="width: 70%"></div>
+<div class="absolute size-3 bg-white border-2 border-primary rounded-full -top-0.5 left-0 shadow-sm"></div>
+<div class="absolute size-3 bg-white border-2 border-primary rounded-full -top-0.5 left-[70%] shadow-sm"></div>
+</div>
+<span class="mono text-xs font-bold text-slate-700">0 - 100</span>
+</div>
+<button class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-white transition-all">
+<span class="material-symbols-outlined text-lg">filter_list</span>
+                        Statut
+                        <span class="material-symbols-outlined text-lg">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Data Table -->
+<div class="flex-1 overflow-auto custom-scrollbar">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-slate-50/90 backdrop-blur-sm z-10 border-b border-slate-200">
+<tr>
+<th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mono">Date/Heure</th>
+<th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mono">Groupe</th>
+<th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mono">Contact</th>
+<th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mono">Extrait du message</th>
+<th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mono text-center">Score</th>
+<th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mono">Statut</th>
+<th class="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mono text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 bg-white">
+<!-- Row 1 (Selected) -->
+<tr class="hover:bg-primary/5 transition-colors cursor-pointer bg-primary/10">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="text-xs font-bold text-slate-900">Aujourd'hui</div>
+<div class="text-[10px] text-slate-400 mono">14:24</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2 py-1 rounded bg-slate-100 text-[10px] font-bold text-slate-600 border border-slate-200 mono">IMMOBILIER-PARIS-15</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-bold">JD</div>
+<div>
+<div class="text-sm font-bold text-slate-900">Jean Dupont</div>
+<div class="text-[10px] text-slate-400 mono">+33 6 12 34 56 78</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<p class="text-sm text-slate-600 line-clamp-1 italic max-w-xs">"Bonjour, je recherche activement un T2 vers Convention..."</p>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="inline-flex items-center justify-center size-9 rounded-full bg-primary/20 border border-primary/30 text-primary font-black mono text-xs">92</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-100 text-orange-700 text-[10px] font-black uppercase tracking-wide w-fit">
+<span class="size-1.5 rounded-full bg-orange-500"></span>
+                                    Nouveau
+                                </div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 hover:bg-white rounded-full text-slate-400 hover:text-primary transition-all shadow-sm border border-transparent hover:border-slate-100">
+<span class="material-symbols-outlined text-xl">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-50 transition-colors cursor-pointer">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="text-xs font-bold text-slate-900">Hier</div>
+<div class="text-[10px] text-slate-400 mono">18:10</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2 py-1 rounded bg-slate-100 text-[10px] font-bold text-slate-600 border border-slate-200 mono">FREELANCE-DEV</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-xs font-bold">SL</div>
+<div>
+<div class="text-sm font-bold text-slate-900">Sarah Lavigne</div>
+<div class="text-[10px] text-slate-400 mono">+33 7 89 01 23 45</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<p class="text-sm text-slate-600 line-clamp-1 italic max-w-xs">"Besoin d'un dev React expérimenté pour mission de 3 mois..."</p>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="inline-flex items-center justify-center size-9 rounded-full bg-primary/10 border border-primary/20 text-primary/70 font-black mono text-xs">74</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-wide w-fit">
+<span class="size-1.5 rounded-full bg-blue-500"></span>
+                                    Contacté
+                                </div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 hover:bg-white rounded-full text-slate-400 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-xl">visibility</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-50 transition-colors cursor-pointer">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="text-xs font-bold text-slate-900">Hier</div>
+<div class="text-[10px] text-slate-400 mono">09:12</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="px-2 py-1 rounded bg-slate-100 text-[10px] font-bold text-slate-600 border border-slate-200 mono">PARIS-SUBLETS</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xs font-bold">MK</div>
+<div>
+<div class="text-sm font-bold text-slate-900">Marc Kaslov</div>
+<div class="text-[10px] text-slate-400 mono">+33 6 44 21 90 12</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<p class="text-sm text-slate-600 line-clamp-1 italic max-w-xs">"Studio disponible pour le mois d'août, Marais..."</p>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="inline-flex items-center justify-center size-9 rounded-full bg-yellow-100 border border-yellow-200 text-yellow-600 font-black mono text-xs">52</span>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wide w-fit">
+<span class="size-1.5 rounded-full bg-slate-400"></span>
+                                    Non Pertinent
+                                </div>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="p-2 hover:bg-white rounded-full text-slate-400 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-xl">visibility</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Slide-in Right Side Panel (Simulated Open) -->
+<aside class="w-[450px] bg-white border-l border-slate-200 flex flex-col shadow-2xl z-20">
+<div class="p-6 border-b border-slate-100 flex items-center justify-between">
+<div>
+<h3 class="text-lg font-black text-slate-900 tracking-tight">Détails de l'opportunité</h3>
+<p class="text-[10px] text-slate-400 mono uppercase font-bold tracking-widest">ID: #OPP-48291</p>
+</div>
+<button class="size-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined text-lg">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+<!-- Message complet -->
+<section class="space-y-3">
+<div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-tighter">
+<span class="material-symbols-outlined text-sm">chat_bubble</span>
+                        Message complet
+                    </div>
+<div class="bg-slate-50 rounded-2xl rounded-tl-none p-4 relative shadow-sm border border-slate-100">
+<p class="text-sm text-slate-700 leading-relaxed">
+                            Bonjour à tous, je recherche activement un T2 vers Convention / Boucicaut pour un emménagement début du mois prochain. 
+                            Budget max 1300€ CC. Dossier solide (garants OK). Si vous avez des pistes, n'hésitez pas ! Merci 🙏
+                        </p>
+<div class="text-[10px] text-slate-400 mt-2 text-right mono">14:24</div>
+</div>
+</section>
+<!-- Profil du contact -->
+<section class="space-y-4">
+<div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-tighter">
+<span class="material-symbols-outlined text-sm">account_circle</span>
+                        Profil du contact
+                    </div>
+<div class="p-4 rounded-xl border border-slate-100 bg-white shadow-sm flex items-center gap-4">
+<div class="size-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xl font-black">JD</div>
+<div class="flex-1">
+<h4 class="text-base font-bold text-slate-900">Jean Dupont</h4>
+<p class="text-xs text-slate-500 mono">+33 6 12 34 56 78</p>
+</div>
+<button class="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors">
+<span class="material-symbols-outlined">chat</span>
+</button>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+<p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter mb-1">Annonces totales</p>
+<p class="text-lg font-black text-slate-900 mono">12</p>
+</div>
+<div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+<p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter mb-1">Premier vu</p>
+<p class="text-lg font-black text-slate-900 mono">12 Jan</p>
+</div>
+</div>
+</section>
+<!-- Analyse du score -->
+<section class="space-y-4">
+<div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-tighter">
+<span class="material-symbols-outlined text-sm">analytics</span>
+                        Analyse du score
+                    </div>
+<div class="p-5 rounded-2xl bg-slate-900 text-white shadow-xl relative overflow-hidden">
+<!-- Abstract Pattern -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl -mr-10 -mt-10"></div>
+<div class="relative z-10 flex items-center justify-between">
+<div>
+<div class="text-3xl font-black mono text-primary">92%</div>
+<p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mt-1">Match très élevé</p>
+</div>
+<div class="size-16 rounded-full border-4 border-slate-800 border-t-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
+</div>
+</div>
+<div class="mt-4 flex flex-wrap gap-2">
+<span class="px-2 py-1 rounded bg-slate-800 text-[10px] font-bold text-primary mono">#T2</span>
+<span class="px-2 py-1 rounded bg-slate-800 text-[10px] font-bold text-primary mono">#CONVENTION</span>
+<span class="px-2 py-1 rounded bg-slate-800 text-[10px] font-bold text-primary mono">#DOSSIER_OK</span>
+</div>
+</div>
+</section>
+<!-- Réponse suggérée par l'IA -->
+<section class="space-y-3">
+<div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-tighter">
+<span class="material-symbols-outlined text-sm">smart_toy</span>
+                        Réponse suggérée par l'IA
+                    </div>
+<div class="bg-primary/5 rounded-2xl rounded-tr-none p-4 border border-primary/20 relative">
+<p class="text-sm text-slate-700 leading-relaxed italic">
+                            "Bonjour Jean ! Je viens de voir votre message sur le groupe. J'ai justement un T2 qui se libère rue de Vaugirard (à 5min de Convention) pour le 1er. Voulez-vous qu'on s'appelle ?"
+                        </p>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 py-2 bg-primary text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-sm">content_copy</span>
+                                Copier
+                            </button>
+<button class="flex-1 py-2 bg-white border border-primary/20 text-primary text-xs font-bold rounded-lg hover:bg-primary/5 transition-all">
+                                Personnaliser
+                            </button>
+</div>
+</div>
+</section>
+<!-- Historique & Actions -->
+<section class="pt-4 space-y-4">
+<div class="flex flex-col gap-2">
+<button class="w-full py-3 bg-white border border-slate-200 text-slate-700 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-lg text-orange-500">check_circle</span>
+                            Marqué comme contacté
+                        </button>
+<div class="grid grid-cols-2 gap-2">
+<button class="py-3 bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-widest rounded-xl hover:bg-primary/20 transition-all">
+                                Gagné
+                            </button>
+<button class="py-3 bg-slate-100 text-slate-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-200 transition-all">
+                                Non pertinent
+                            </button>
+</div>
+</div>
+</section>
+</div>
+</aside>
+</main>
+</body></html>

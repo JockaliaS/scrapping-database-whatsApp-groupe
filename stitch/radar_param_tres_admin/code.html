@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#10b774",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#10221b",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["Space Grotesk", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<title>Radar Admin - Paramètres</title>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Top Navigation -->
+<nav class="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-6 py-3">
+<div class="max-w-7xl mx-auto flex items-center justify-between">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-3xl">radar</span>
+<h1 class="font-mono font-bold text-xl tracking-tighter text-primary">RADAR</h1>
+</div>
+<div class="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+<button class="px-4 py-1.5 text-sm font-medium rounded-md bg-white dark:bg-slate-700 shadow-sm">Tableau de bord</button>
+<button class="px-4 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-primary">Surveillance</button>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+<button class="px-3 py-1 text-xs font-bold bg-primary text-white rounded-md shadow-sm">FR</button>
+<button class="px-3 py-1 text-xs font-bold text-slate-500 hover:text-primary">EN</button>
+</div>
+<div class="h-8 w-[1px] bg-slate-200 dark:bg-slate-700 mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 p-1 rounded-full transition-colors">
+<div class="text-right hidden sm:block">
+<p class="text-sm font-semibold leading-none">Admin Profile</p>
+<p class="text-[10px] text-slate-500 uppercase font-mono tracking-widest">Superuser</p>
+</div>
+<div class="size-9 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/30 overflow-hidden">
+<img alt="Admin Avatar" class="size-full object-cover" data-alt="Admin user avatar illustration" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHw85CjHD9juwUMJ9T1MRtf_kSLrMKKfP_DSpRDygh7Ay9BLC0COQctnNe-xh-IO_EPuW-7UXwsz9QUIJNGbuKTR0XseowYUbzxvLL_ZaztQ_7YqZw0DnHZ_8oQ8FnPRhg4InrruUVgU0q_YT5EwmkcKa1Dk7pq4jjX6YDLirfQl7lrwtcc7ykm91v3TYOTelO88hmU4dGNV4H-VcmOGSZB2wA1NYyCxIMsXPc-1e0VvrEbu7ebRf_7QntEZzdhH9PJPCC_ulDTsCo"/>
+</div>
+</div>
+</div>
+</div>
+</nav>
+<main class="max-w-7xl mx-auto p-6 lg:p-10 space-y-12">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h2 class="text-3xl font-bold tracking-tight">Paramètres &amp; Administration</h2>
+<p class="text-slate-500 mt-1 italic">Gérez vos intégrations, utilisateurs et l'état du système Radar.</p>
+</div>
+<div class="flex items-center gap-2 text-sm font-mono text-slate-400 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+</span>
+                SYSTÈME OPÉRATIONNEL
+            </div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left Column: Integrations & Health -->
+<div class="lg:col-span-2 space-y-8">
+<!-- Integrations -->
+<section class="space-y-4">
+<div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+<span class="material-symbols-outlined text-primary">extension</span>
+<h3 class="text-lg font-bold">Intégrations</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Evolution API Card -->
+<div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
+<span class="material-symbols-outlined text-primary">hub</span>
+</div>
+<h4 class="font-bold">Evolution API</h4>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 uppercase tracking-wider">Connecté</span>
+</div>
+<div class="space-y-3">
+<div class="space-y-1">
+<label class="text-[11px] font-bold uppercase text-slate-400 font-mono tracking-wider">Endpoint URL</label>
+<input class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-primary focus:border-primary" type="text" value="https://api.evolution.radar.io/v1"/>
+</div>
+<div class="space-y-1">
+<label class="text-[11px] font-bold uppercase text-slate-400 font-mono tracking-wider">Clé API</label>
+<div class="relative">
+<input class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-primary focus:border-primary" type="password" value="sk_live_51Mxxxxxxxxxxxxxxxxxx"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary">
+<span class="material-symbols-outlined text-sm">visibility_off</span>
+</button>
+</div>
+</div>
+<button class="w-full py-2 bg-primary text-white text-sm font-bold rounded-lg hover:brightness-110 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-base">sync_alt</span>
+                                    Tester la connexion
+                                </button>
+</div>
+</div>
+<!-- Gemini API Card -->
+<div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+<span class="material-symbols-outlined text-blue-500">psychology</span>
+</div>
+<h4 class="font-bold">Gemini API</h4>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-600 border border-amber-200 uppercase tracking-wider">Action Requise</span>
+</div>
+<div class="space-y-3">
+<div class="space-y-1">
+<label class="text-[11px] font-bold uppercase text-slate-400 font-mono tracking-wider">Modèle sélectionné</label>
+<select class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary focus:border-primary">
+<option>Gemini 1.5 Pro (Latest)</option>
+<option>Gemini 1.5 Flash</option>
+<option>Gemini 1.0 Ultra</option>
+</select>
+</div>
+<div class="space-y-1">
+<label class="text-[11px] font-bold uppercase text-slate-400 font-mono tracking-wider">Clé API</label>
+<div class="relative">
+<input class="w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono focus:ring-primary focus:border-primary" placeholder="Saisir la clé API Gemini" type="password"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary">
+<span class="material-symbols-outlined text-sm">visibility</span>
+</button>
+</div>
+</div>
+<button class="w-full py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                                    Tester l'IA
+                                </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Users Table -->
+<section class="space-y-4">
+<div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">group</span>
+<h3 class="text-lg font-bold">Utilisateurs &amp; Profils</h3>
+</div>
+<button class="bg-primary hover:brightness-110 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all">
+<span class="material-symbols-outlined text-sm">person_add</span>
+                            Inviter un utilisateur
+                        </button>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+<table class="w-full text-left text-sm border-collapse">
+<thead>
+<tr class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-mono text-[11px] uppercase tracking-wider">
+<th class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">Utilisateur</th>
+<th class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">Email</th>
+<th class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">Groupes</th>
+<th class="px-4 py-3 border-b border-slate-200 dark:border-slate-700">Statut</th>
+<th class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<tr>
+<td class="px-4 py-3 font-semibold">Jean Dupont</td>
+<td class="px-4 py-3 text-slate-500">jean.d@radar.io</td>
+<td class="px-4 py-3"><span class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[10px] font-bold">3 groupes</span></td>
+<td class="px-4 py-3">
+<span class="flex items-center gap-1.5 text-primary font-bold text-xs uppercase">
+<span class="size-1.5 rounded-full bg-primary"></span> Actif
+                                        </span>
+</td>
+<td class="px-4 py-3 text-right">
+<div class="flex justify-end gap-2 text-slate-400">
+<button class="hover:text-primary transition-colors"><span class="material-symbols-outlined text-lg">edit</span></button>
+<button class="hover:text-red-500 transition-colors"><span class="material-symbols-outlined text-lg">block</span></button>
+</div>
+</td>
+</tr>
+<tr>
+<td class="px-4 py-3 font-semibold">Alice Martin</td>
+<td class="px-4 py-3 text-slate-500">alice.m@radar.io</td>
+<td class="px-4 py-3"><span class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[10px] font-bold">1 groupe</span></td>
+<td class="px-4 py-3">
+<span class="flex items-center gap-1.5 text-primary font-bold text-xs uppercase">
+<span class="size-1.5 rounded-full bg-primary"></span> Actif
+                                        </span>
+</td>
+<td class="px-4 py-3 text-right">
+<div class="flex justify-end gap-2 text-slate-400">
+<button class="hover:text-primary transition-colors"><span class="material-symbols-outlined text-lg">edit</span></button>
+<button class="hover:text-red-500 transition-colors"><span class="material-symbols-outlined text-lg">block</span></button>
+</div>
+</td>
+</tr>
+<tr>
+<td class="px-4 py-3 font-semibold text-slate-400 italic">Kevin Space (Invité)</td>
+<td class="px-4 py-3 text-slate-400">kevin.s@gmail.com</td>
+<td class="px-4 py-3"><span class="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[10px] font-bold">0 groupe</span></td>
+<td class="px-4 py-3">
+<span class="flex items-center gap-1.5 text-slate-400 font-bold text-xs uppercase">
+<span class="size-1.5 rounded-full bg-slate-300"></span> Inactif
+                                        </span>
+</td>
+<td class="px-4 py-3 text-right">
+<div class="flex justify-end gap-2 text-slate-400">
+<button class="hover:text-primary transition-colors"><span class="material-symbols-outlined text-lg">edit</span></button>
+<button class="hover:text-red-500 transition-colors"><span class="material-symbols-outlined text-lg">delete</span></button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-900/30 text-amber-800 dark:text-amber-200 text-xs italic">
+<span class="material-symbols-outlined text-sm">info</span>
+                        Les utilisateurs standards n'ont pas accès aux paramètres de l'administration.
+                    </div>
+</section>
+</div>
+<!-- Right Column: System Health & Collaborative -->
+<div class="space-y-8">
+<!-- System Health -->
+<section class="space-y-4">
+<div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">analytics</span>
+<h3 class="text-lg font-bold">État du Système</h3>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-3">
+<!-- Health Cards -->
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between items-center group">
+<div>
+<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Frontend Version</p>
+<p class="font-bold text-sm">v1.4.2 <span class="text-xs font-mono text-slate-400 font-normal">#82d9f1</span></p>
+<p class="text-[9px] text-slate-400 mt-1">Vérifié il y a 30s</p>
+</div>
+<span class="material-symbols-outlined text-primary text-xl">check_circle</span>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+<div>
+<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Backend API</p>
+<p class="font-bold text-sm">v1.4.2 <span class="text-xs font-mono text-slate-400 font-normal">#c0ffee</span></p>
+<p class="text-[9px] text-slate-400 mt-1">Vérifié il y a 30s</p>
+</div>
+<span class="material-symbols-outlined text-primary text-xl">check_circle</span>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+<div>
+<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Base de données</p>
+<p class="font-bold text-sm">PostgreSQL Cluster</p>
+<p class="text-[9px] text-slate-400 mt-1">Ping: 12ms • Vérifié il y a 30s</p>
+</div>
+<div class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded">ACTIVE</div>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+<div>
+<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">WebSockets</p>
+<p class="font-bold text-sm">128 Connexions Actives</p>
+<p class="text-[9px] text-slate-400 mt-1">Relais stable • 100% success</p>
+</div>
+<span class="material-symbols-outlined text-primary text-xl">dynamic_feed</span>
+</div>
+<div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+<div>
+<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Temps de disponibilité</p>
+<p class="font-bold text-sm">99.9% <span class="text-[10px] text-slate-400 font-normal">(30 derniers jours)</span></p>
+<p class="text-[9px] text-slate-400 mt-1">Dernier incident: 14 oct.</p>
+</div>
+<span class="material-symbols-outlined text-primary text-xl">verified</span>
+</div>
+<button class="w-full mt-2 py-2 text-slate-500 hover:text-primary text-sm font-semibold border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl hover:border-primary/50 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">list_alt</span>
+                            Voir les logs complets
+                        </button>
+</div>
+</section>
+<!-- Collaborative Mode -->
+<section class="space-y-4">
+<div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+<span class="material-symbols-outlined text-primary">diversity_3</span>
+<h3 class="text-lg font-bold">Mode Collaboratif</h3>
+</div>
+<div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-4">
+<p class="text-sm text-slate-500 italic leading-relaxed">
+                            Permettez à vos agents de partager la même base d'opportunités pour une collaboration en temps réel.
+                        </p>
+<div class="space-y-3">
+<div class="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors">
+<span class="text-sm font-medium">Jean Dupont</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors">
+<span class="text-sm font-medium">Alice Martin</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Bottom Section: Notification Templates -->
+<section class="space-y-4">
+<div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+<span class="material-symbols-outlined text-primary">notifications_active</span>
+<h3 class="text-lg font-bold">Modèles de Notification</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Template 1 -->
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+<div class="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+<h4 class="font-bold text-sm">Alerte Nouvelle Opportunité</h4>
+<span class="text-[10px] font-mono text-slate-400">ID: NOTIF_01</span>
+</div>
+<div class="p-4 flex-grow">
+<div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
+<p class="text-xs text-slate-500 font-mono italic">
+                                "Bonjour {{user}}, une nouvelle opportunité est disponible sur {{platform}}..."
+                            </p>
+</div>
+</div>
+<div class="px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+<span class="text-xs text-slate-400">Dernière modif: 2j</span>
+<button class="text-primary hover:underline text-sm font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-base">edit_note</span> Editer
+                        </button>
+</div>
+</div>
+<!-- Template 2 -->
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+<div class="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+<h4 class="font-bold text-sm">Rapport Hebdomadaire</h4>
+<span class="text-[10px] font-mono text-slate-400">ID: NOTIF_02</span>
+</div>
+<div class="p-4 flex-grow">
+<div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
+<p class="text-xs text-slate-500 font-mono italic">
+                                "Voici votre résumé de la semaine. Total des détections : {{count}}..."
+                            </p>
+</div>
+</div>
+<div class="px-4 py-3 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+<span class="text-xs text-slate-400">Dernière modif: 15j</span>
+<button class="text-primary hover:underline text-sm font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-base">edit_note</span> Editer
+                        </button>
+</div>
+</div>
+<!-- Template 3 -->
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col border-dashed group cursor-pointer hover:border-primary/50 transition-colors">
+<div class="flex-grow flex flex-col items-center justify-center p-8 text-slate-400 group-hover:text-primary">
+<span class="material-symbols-outlined text-4xl mb-2">add_circle</span>
+<p class="text-sm font-bold uppercase tracking-wider">Créer un modèle</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<footer class="max-w-7xl mx-auto px-6 py-10 text-center border-t border-slate-200 dark:border-slate-800 text-slate-400 text-sm">
+<div class="flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">radar</span>
+<span class="font-mono font-bold">RADAR Admin v1.4.2</span>
+</div>
+<div class="flex gap-6">
+<a class="hover:text-primary" href="#">Documentation</a>
+<a class="hover:text-primary" href="#">Support technique</a>
+<a class="hover:text-primary" href="#">Confidentialité</a>
+</div>
+<p>© 2024 RADAR SaaS. Tous droits réservés.</p>
+</div>
+</footer>
+</body></html>

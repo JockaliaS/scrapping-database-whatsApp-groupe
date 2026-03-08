@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RADAR - Paramètres</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Space+Grotesk:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#10b774",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#10221b",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["Space Grotesk", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'Space Grotesk', monospace; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navbar -->
+<header class="flex items-center justify-between border-b border-primary/10 bg-white dark:bg-background-dark px-6 md:px-20 py-3 sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<div class="text-primary">
+<span class="material-symbols-outlined text-3xl">radar</span>
+</div>
+<h2 class="text-primary font-mono text-xl font-bold tracking-tighter">RADAR</h2>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-slate-600 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-slate-600 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Alertes</a>
+<a class="text-primary text-sm font-bold" href="#">Settings</a>
+</nav>
+<div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
+<span>FR</span>
+<span class="text-[10px] opacity-50">/</span>
+<span class="opacity-50">EN</span>
+</button>
+<div class="flex items-center gap-2 cursor-pointer group">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 ring-2 ring-primary/20" data-alt="User profile avatar circle" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBDLc7y7a2YzfigvY5EIebV8cLroqg5iJslSKC3_bRBXzLTkV1RD0EhfCAGDTAZp5Tuppx7l0lhsZarEjjYUbn5DBXOgEOqLYsuB5HzP7G2qz3_SyE6IrnwTtBsKvOQRGtCqr0_gXULDj6Oozk-p_WZXZSZ9evf1EY1NbuOaMcXXZXWtwAvgElcUdakcu69qsAHaz76Ge5o-CGyGA-HdsjaN0L3xQfuG0KVIZLgGJEc-FDK92WkEvtcCOf402ReYSV-aZP9P6iMi0we");'></div>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors">expand_more</span>
+</div>
+</div>
+</header>
+<main class="flex-1 max-w-5xl mx-auto w-full px-6 py-10 space-y-12">
+<!-- Section Mon Profil -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">person</span>
+<h2 class="text-2xl font-black tracking-tight">Mon Profil</h2>
+</div>
+<div class="bg-white dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex flex-col md:flex-row gap-8 items-start">
+<div class="relative group">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-2xl size-32 shadow-lg border-4 border-white dark:border-slate-800" data-alt="Large user profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAIFLsiJZhZQ3c2mmEhThT-_snyK79FnnmRq0_bDMUOYdhQiLRhKhWZmC51n7grZzzlB9eHCJb9gXW9HZS2-yn7kE6Xly2Cy1CH0q4To0P6N2PEJBrWU2JipLosP5WJtdVa8uGBb8Zlj3dgeM1lMMbenGbjcaPFS-aK-zg0uqAJrlo_DDWrawjDnhnt4fD9I5E80BwzCF1yPlAZjjh4l42TbK3JnEWiW4nIq_57qYwr2T-hXc2r3ubieZ1V1_NwWB_AgVLELF_Kt13T");'></div>
+<button class="absolute -bottom-2 -right-2 p-2 bg-primary text-white rounded-full shadow-lg hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+</div>
+<div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+<label class="flex flex-col gap-2">
+<span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Nom complet</span>
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-background-light dark:bg-slate-800 focus:ring-primary focus:border-primary" type="text" value="John Doe"/>
+</label>
+<label class="flex flex-col gap-2">
+<span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Email</span>
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-background-light dark:bg-slate-800 focus:ring-primary focus:border-primary" type="email" value="john@example.com"/>
+</label>
+<div class="md:col-span-2 flex justify-end">
+<button class="bg-primary hover:bg-primary/90 text-white font-bold py-2.5 px-8 rounded-lg transition-all shadow-md shadow-primary/20">Enregistrer</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section Mon Profil IA -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">psychology</span>
+<h2 class="text-2xl font-black tracking-tight">Mon Profil IA</h2>
+</div>
+<div class="bg-white dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-800 space-y-6">
+<div class="bg-background-light dark:bg-slate-800 p-4 rounded-lg border-l-4 border-primary italic text-slate-600 dark:text-slate-400">
+                            "Je recherche des opportunités dans le domaine du développement Web React et Node.js, principalement en freelance ou CDI sur Paris. Je suis intéressé par les projets SaaS et Fintech."
+                        </div>
+<div class="space-y-3">
+<span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Mots-clés surveillés</span>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-sm font-medium flex items-center gap-2">React <button class="material-symbols-outlined text-xs">close</button></span>
+<span class="px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-sm font-medium flex items-center gap-2">SaaS <button class="material-symbols-outlined text-xs">close</button></span>
+<span class="px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-sm font-medium flex items-center gap-2">Freelance <button class="material-symbols-outlined text-xs">close</button></span>
+<button class="px-3 py-1 border border-dashed border-slate-300 dark:border-slate-600 text-slate-400 rounded-full text-sm hover:border-primary hover:text-primary transition-colors">+ Ajouter</button>
+</div>
+</div>
+<div class="space-y-3">
+<span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Intentions détectées</span>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded text-xs font-mono">RECRUTEMENT</span>
+<span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded text-xs font-mono">PRESTATION_SERVICE</span>
+<span class="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded text-xs font-mono">NETWORKING</span>
+</div>
+</div>
+<div class="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+<div class="flex justify-between items-center">
+<span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Score minimum de pertinence</span>
+<span class="text-primary font-bold font-mono">75%</span>
+</div>
+<input class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary" type="range"/>
+</div>
+<div class="flex justify-end">
+<button class="flex items-center gap-2 text-primary font-bold text-sm hover:underline">
+<span class="material-symbols-outlined text-sm">refresh</span> Régénérer par l'IA
+                            </button>
+</div>
+</div>
+</section>
+<!-- Section Ma Connexion WhatsApp -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">hub</span>
+<h2 class="text-2xl font-black tracking-tight">Ma Connexion WhatsApp</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-white dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-center">
+<div class="size-48 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center mb-4 relative overflow-hidden group">
+<div class="absolute inset-0 bg-slate-900/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined text-white text-4xl">refresh</span>
+</div>
+<div class="w-40 h-40 bg-white p-2 rounded shadow-inner" data-alt="WhatsApp connection QR Code" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCorcdC8d3LLBbFY7L00v_ENzgwm6u26_h4E0nPxxWguyZULcXEJmN66PgTA1rQqx84mkf4xQDO_zEywLKoSYbvVBgb61l9Ws4hpV5JXEpDo7-MuXYv9ZqKT73_4FPFUpzA0OvzYX4T8PlAMQ3dkMIuYTLPIa9fKkJui1hfZktjvYw3mclRoSb3h5V-MrJdUAPMUhJml1fGmVV0hGfBATazeKKwDz9sb4w_AR77Etim_RlOdUhRka3pXhMzjWYA0aenpncFM4jo_oq8'); background-size: contain;"></div>
+</div>
+<p class="text-sm text-slate-500 mb-4">Scannez pour reconnecter votre compte</p>
+</div>
+<div class="bg-white dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-800 space-y-6">
+<div>
+<span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Numéro connecté</span>
+<div class="flex items-center gap-3 mt-2">
+<span class="font-mono text-lg">+33 6 12 34 56 78</span>
+<span class="flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20">
+<span class="size-1.5 bg-primary rounded-full animate-pulse"></span> CONNECTÉ
+                                    </span>
+</div>
+</div>
+<label class="flex flex-col gap-2">
+<span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Numéro pour alertes (WhatsApp)</span>
+<input class="rounded-lg border-slate-200 dark:border-slate-700 bg-background-light dark:bg-slate-800 font-mono" placeholder="+33 6 00 00 00 00" type="text"/>
+</label>
+<div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-lg flex gap-3">
+<span class="material-symbols-outlined text-amber-500 text-sm">warning</span>
+<p class="text-xs text-amber-700 dark:text-amber-400">Ce numéro recevra les notifications de détection d'opportunités en temps réel.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Section Mon Modèle d'Alerte -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">chat_bubble</span>
+<h2 class="text-2xl font-black tracking-tight">Mon Modèle d'Alerte</h2>
+</div>
+<div class="bg-white dark:bg-slate-900/50 p-6 rounded-xl border border-slate-200 dark:border-slate-800">
+<div class="flex flex-wrap gap-2 mb-4">
+<span class="text-xs font-semibold text-slate-400 self-center mr-2 uppercase tracking-widest">Variables:</span>
+<button class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-xs font-mono border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:border-primary/30 transition-colors"><code>{{score}}</code></button>
+<button class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-xs font-mono border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:border-primary/30 transition-colors"><code>{{contact}}</code></button>
+<button class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-xs font-mono border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:border-primary/30 transition-colors"><code>{{message}}</code></button>
+<button class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-xs font-mono border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:border-primary/30 transition-colors"><code>{{groupe}}</code></button>
+<button class="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-xs font-mono border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:border-primary/30 transition-colors"><code>{{lien}}</code></button>
+</div>
+<textarea class="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-background-light dark:bg-slate-800 font-mono text-sm focus:ring-primary focus:border-primary" placeholder="Écrivez votre modèle ici..." rows="5">🚀 *Radar - Nouvelle Opportunité !*
+
+Score: {{score}}%
+Groupe: {{groupe}}
+Contact: {{contact}}
+
+Message: {{message}}
+
+Voir l'offre: {{lien}}</textarea>
+<div class="mt-4 flex justify-between items-center">
+<p class="text-xs text-slate-400">Utilisez le Markdown basique de WhatsApp (*gras*, _italique_).</p>
+<button class="flex items-center gap-2 px-4 py-2 border border-primary text-primary font-bold rounded-lg hover:bg-primary/5 transition-colors">
+<span class="material-symbols-outlined text-sm">visibility</span> Prévisualiser
+                            </button>
+</div>
+</div>
+</section>
+<!-- Section Mes Groupes -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">groups</span>
+<h2 class="text-2xl font-black tracking-tight">Mes Groupes</h2>
+</div>
+<div class="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+<div class="max-h-80 overflow-y-auto">
+<table class="w-full text-left">
+<thead class="bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 uppercase font-semibold">
+<tr>
+<th class="px-6 py-4">Groupe WhatsApp</th>
+<th class="px-6 py-4 text-center">Monitoring</th>
+<th class="px-6 py-4">Dernier scan</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<tr>
+<td class="px-6 py-4 font-medium">BDE Paris - Dev Freelance</td>
+<td class="px-6 py-4 text-center">
+<input checked="" class="rounded text-primary focus:ring-primary w-5 h-5" type="checkbox"/>
+</td>
+<td class="px-6 py-4 text-sm font-mono text-slate-400">Aujourd'hui, 14:32</td>
+</tr>
+<tr>
+<td class="px-6 py-4 font-medium">FrenchTech Jobs 🇫🇷</td>
+<td class="px-6 py-4 text-center">
+<input checked="" class="rounded text-primary focus:ring-primary w-5 h-5" type="checkbox"/>
+</td>
+<td class="px-6 py-4 text-sm font-mono text-slate-400">Aujourd'hui, 13:10</td>
+</tr>
+<tr>
+<td class="px-6 py-4 font-medium">Missions React/Node</td>
+<td class="px-6 py-4 text-center">
+<input class="rounded text-primary focus:ring-primary w-5 h-5" type="checkbox"/>
+</td>
+<td class="px-6 py-4 text-sm font-mono text-slate-400">Hier, 21:05</td>
+</tr>
+<tr>
+<td class="px-6 py-4 font-medium">JS Community Paris</td>
+<td class="px-6 py-4 text-center">
+<input checked="" class="rounded text-primary focus:ring-primary w-5 h-5" type="checkbox"/>
+</td>
+<td class="px-6 py-4 text-sm font-mono text-slate-400">Aujourd'hui, 09:44</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<!-- Section Partage Collaboratif -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">share</span>
+<h2 class="text-2xl font-black tracking-tight">Partage Collaboratif</h2>
+</div>
+<div class="bg-primary/5 dark:bg-primary/10 p-6 rounded-xl border border-primary/20 flex flex-col md:flex-row gap-8 items-center">
+<div class="flex-1 space-y-2">
+<h3 class="text-lg font-bold">Activer le réseau Radar</h3>
+<p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Partagez anonymement les opportunités que vous ne traitez pas et recevez en retour celles du réseau qui correspondent à votre profil IA.</p>
+<div class="flex gap-6 pt-4">
+<div class="text-center">
+<p class="text-2xl font-black text-primary font-mono">12</p>
+<p class="text-[10px] uppercase font-bold text-slate-500">Opportunités partagées</p>
+</div>
+<div class="text-center">
+<p class="text-2xl font-black text-primary font-mono">5</p>
+<p class="text-[10px] uppercase font-bold text-slate-500">Opportunités reçues</p>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-sm font-bold text-slate-400">DÉSACTIVÉ</span>
+<div class="w-14 h-7 bg-primary rounded-full relative cursor-pointer shadow-inner">
+<div class="absolute right-1 top-1 size-5 bg-white rounded-full shadow transition-all"></div>
+</div>
+<span class="text-sm font-bold text-primary">ACTIVÉ</span>
+</div>
+</div>
+</section>
+<!-- Section Zone de Danger -->
+<section class="pt-10 border-t border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-red-500">dangerous</span>
+<h2 class="text-2xl font-black tracking-tight text-red-600">Zone de Danger</h2>
+</div>
+<div class="flex flex-col md:flex-row gap-4">
+<button class="flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 font-bold transition-colors">
+<span class="material-symbols-outlined text-sm">download</span> Exporter mes données
+                        </button>
+<button class="flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-red-600 text-white hover:bg-red-700 font-bold transition-shadow shadow-lg shadow-red-200 dark:shadow-none">
+<span class="material-symbols-outlined text-sm">delete</span> Supprimer mes données
+                        </button>
+</div>
+</section>
+</main>
+<footer class="py-10 text-center text-slate-400 text-xs border-t border-slate-100 dark:border-slate-900">
+                © 2024 RADAR - WhatsApp Monitoring SaaS. Built for builders.
+            </footer>
+</div>
+</div>
+</body></html>

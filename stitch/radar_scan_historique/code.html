@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#10b774",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#10221b",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono-text { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="layout-container flex h-full grow flex-col">
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-primary/10 px-6 py-3 bg-white/50 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-6">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M36.7273 44C33.9891 44 31.6043 39.8386 30.3636 33.69C29.123 39.8386 26.7382 44 24 44C21.2618 44 18.877 39.8386 17.6364 33.69C16.3957 39.8386 14.0109 44 11.2727 44C7.25611 44 4 35.0457 4 24C4 12.9543 7.25611 4 11.2727 4C14.0109 4 16.3957 8.16144 17.6364 14.31C18.877 8.16144 21.2618 4 24 4C26.7382 4 29.123 8.16144 30.3636 14.31C31.6043 8.16144 33.9891 4 36.7273 4C40.7439 4 44 12.9543 44 24C44 35.0457 40.7439 44 36.7273 44Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="mono-text text-xl font-bold leading-tight tracking-tight">RADAR</h2>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold text-primary">FR</span>
+<span class="text-slate-300">/</span>
+<a class="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors" href="#">EN</a>
+</div>
+<div class="h-8 w-px bg-slate-200"></div>
+<button class="flex min-w-[100px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-sm">
+<span>Mon Profil</span>
+</button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/20" data-alt="Photo de profil de l'utilisateur" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAHEjV4QKChzWG3GTLgZLxxS9365eAL2gb1-YcO8NAIn_e5XUz1U-E_Etwy5DYdAyYom5pZbHPRjdvtMA0joLUPlPG1Mim6IKSZMzap43wxdKEFRAS9pZC_eskoy_AIeFXyu8B0lrtNGXFWSu-Jcosn7WDdceRcnpgleHjnmRs9zkXP4DepBBfpo1uH-h-9N1Rd-Q-KP0c0s998Qva0wv8Y36EpYp7afNeDj1NAMzQq_g4gQDogVqBno1tchZqQCXdcTzVdgIDhH_ER");'></div>
+</div>
+</header>
+<main class="flex flex-1 justify-center py-8">
+<div class="layout-content-container flex flex-col w-full max-w-[1024px] px-6 gap-8">
+<div class="flex flex-col gap-2">
+<h1 class="text-slate-900 text-4xl font-black leading-tight tracking-[-0.033em]">Scan historique</h1>
+<p class="text-slate-500 text-lg">Analysez manuellement les messages passés de vos groupes connectés.</p>
+</div>
+<div class="rounded-xl border border-amber-200 bg-amber-50 p-5 flex flex-col sm:flex-row items-start justify-between gap-4">
+<div class="flex gap-3">
+<span class="material-symbols-outlined text-amber-600 mt-0.5">warning</span>
+<div class="flex flex-col gap-1">
+<p class="text-amber-900 text-sm font-bold leading-tight">Limites de l'API WhatsApp</p>
+<p class="text-amber-800 text-sm font-normal leading-relaxed">
+                                    Les limites de l'API restreignent l'accès aux messages historiques. Vos résultats dépendent de ce que WhatsApp rend disponible. Votre base de données s'enrichira au fil du temps à mesure que Radar surveille vos groupes en continu.
+                                </p>
+</div>
+</div>
+<button class="flex p-1 text-amber-500 hover:text-amber-700 transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<div class="lg:col-span-7 flex flex-col gap-6">
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+<h3 class="text-slate-900 text-xl font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">settings</span>
+                                    Configurer le scan
+                                </h3>
+<div class="space-y-6">
+<div>
+<label class="block text-sm font-bold text-slate-700 mb-3">Sélectionner les groupes</label>
+<div class="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+<label class="flex items-center p-3 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
+<input checked="" class="rounded text-primary focus:ring-primary h-5 w-5 mr-3" type="checkbox"/>
+<span class="flex-1 font-medium text-slate-800">Growth Hackers France</span>
+<span class="text-xs mono-text bg-slate-100 px-2 py-1 rounded">1.2k membres</span>
+</label>
+<label class="flex items-center p-3 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
+<input class="rounded text-primary focus:ring-primary h-5 w-5 mr-3" type="checkbox"/>
+<span class="flex-1 font-medium text-slate-800">Ventes B2B SaaS</span>
+<span class="text-xs mono-text bg-slate-100 px-2 py-1 rounded">450 membres</span>
+</label>
+<label class="flex items-center p-3 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
+<input checked="" class="rounded text-primary focus:ring-primary h-5 w-5 mr-3" type="checkbox"/>
+<span class="flex-1 font-medium text-slate-800">Radar Founders Only</span>
+<span class="text-xs mono-text bg-slate-100 px-2 py-1 rounded">89 membres</span>
+</label>
+</div>
+</div>
+<div>
+<label class="block text-sm font-bold text-slate-700 mb-3">Période d'analyse</label>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+<button class="py-2 px-3 text-xs font-bold rounded-lg border border-slate-200 hover:border-primary text-slate-600 hover:text-primary transition-all">7 jours</button>
+<button class="py-2 px-3 text-xs font-bold rounded-lg border border-primary bg-primary/10 text-primary transition-all">30 jours</button>
+<button class="py-2 px-3 text-xs font-bold rounded-lg border border-slate-200 hover:border-primary text-slate-600 hover:text-primary transition-all">3 mois</button>
+<button class="py-2 px-3 text-xs font-bold rounded-lg border border-slate-200 hover:border-primary text-slate-600 hover:text-primary transition-all">Personnalisé</button>
+</div>
+<div class="flex items-center gap-2 text-xs mono-text text-slate-400 bg-slate-50 p-2 rounded-md">
+<span class="material-symbols-outlined text-sm">calendar_month</span>
+                                            Analyse du 24/04/2024 au 24/05/2024
+                                        </div>
+</div>
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary/90 transition-all shadow-md mt-4">
+<span class="material-symbols-outlined">rocket_launch</span>
+                                        Lancer le scan historique
+                                    </button>
+</div>
+</div>
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-2">
+<div class="size-2 bg-primary rounded-full animate-pulse"></div>
+<h3 class="text-slate-900 text-lg font-bold">Scan en cours</h3>
+</div>
+<button class="text-xs font-bold text-rose-500 hover:text-rose-700 underline flex items-center gap-1">
+                                        Annuler le scan
+                                    </button>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between text-sm mb-1">
+<span class="text-slate-600 font-medium">Analyse : <span class="text-primary">Growth Hackers France</span></span>
+<span class="mono-text font-bold text-primary">65%</span>
+</div>
+<div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+<div class="bg-primary h-full rounded-full transition-all duration-500" style="width: 65%"></div>
+</div>
+<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Messages analysés</span>
+<span class="mono-text text-lg font-bold text-slate-700">1,402</span>
+</div>
+<div class="h-8 w-px bg-slate-200"></div>
+<div class="flex flex-col items-end">
+<span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Correspondances</span>
+<span class="mono-text text-lg font-bold text-primary">24</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-5 flex flex-col gap-6">
+<div class="bg-slate-900 text-white rounded-xl shadow-xl p-6 overflow-hidden relative">
+<div class="absolute -top-12 -right-12 w-40 h-40 bg-primary/20 rounded-full blur-3xl"></div>
+<h3 class="text-lg font-bold mb-8 relative z-10 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">analytics</span>
+                                    Dernier résumé de scan
+                                </h3>
+<div class="space-y-6 relative z-10">
+<div class="flex justify-between items-end border-b border-white/10 pb-4">
+<div class="flex flex-col gap-1">
+<p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Total scannés</p>
+<p class="mono-text text-2xl font-black">4,812</p>
+</div>
+<span class="text-xs text-primary bg-primary/10 px-2 py-1 rounded">Messages</span>
+</div>
+<div class="flex justify-between items-end border-b border-white/10 pb-4">
+<div class="flex flex-col gap-1">
+<p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Correspondances</p>
+<p class="mono-text text-2xl font-black text-primary">87</p>
+</div>
+<span class="material-symbols-outlined text-primary">target</span>
+</div>
+<div class="flex justify-between items-end border-b border-white/10 pb-4">
+<div class="flex flex-col gap-1">
+<p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Nouveaux contacts</p>
+<p class="mono-text text-2xl font-black text-white">32</p>
+</div>
+<span class="material-symbols-outlined text-white/50">person_add</span>
+</div>
+</div>
+<button class="w-full mt-8 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold transition-all flex items-center justify-center gap-2 group border border-white/5">
+                                    Voir dans Opportunités
+                                    <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+<div class="bg-primary/5 rounded-xl border border-primary/20 p-6">
+<h4 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-base">info</span>
+                                    Conseil Expert
+                                </h4>
+<p class="text-sm text-slate-600 leading-relaxed italic">
+                                    "Utilisez le scan historique ponctuellement pour rattraper des conversations lors de l'onboarding d'un nouveau groupe. Pour une surveillance optimale, laissez Radar tourner en tâche de fond."
+                                </p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="border-t border-slate-200 mt-auto py-6">
+<div class="max-w-[1024px] mx-auto px-6 flex justify-between items-center text-slate-400 text-xs mono-text">
+<p>© 2024 RADAR — WhatsApp Intelligence Engine</p>
+<div class="flex gap-4">
+<a class="hover:text-primary transition-colors" href="#">Documentation API</a>
+<a class="hover:text-primary transition-colors" href="#">Statut</a>
+</div>
+</div>
+</footer>
+</div>
+</div>
+</body></html>

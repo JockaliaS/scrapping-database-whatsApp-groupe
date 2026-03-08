@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#10b774",
+                        "background-light": "#f8fafc",
+                        "background-dark": "#10221b",
+                        "card-bg": "#ffffff",
+                        "text-primary": "#1e293b",
+                        "text-secondary": "#64748b",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light font-display text-text-primary antialiased">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<!-- Top Navbar -->
+<header class="sticky top-0 z-50 flex items-center justify-between border-b border-slate-200 bg-white/80 px-6 py-3 backdrop-blur-md lg:px-10">
+<div class="flex items-center gap-3">
+<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
+<span class="material-symbols-outlined text-[20px]">radar</span>
+</div>
+<h1 class="font-mono text-xl font-bold tracking-tighter text-text-primary">RADAR</h1>
+</div>
+<div class="hidden items-center md:flex">
+<div class="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5">
+<span class="relative flex h-2 w-2">
+<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
+</span>
+<span class="font-mono text-xs font-bold uppercase tracking-wider text-primary">Surveillance Active</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+<button class="px-2 py-1 text-xs font-bold text-primary">FR</button>
+<div class="h-3 w-px bg-slate-300"></div>
+<button class="px-2 py-1 text-xs font-bold text-text-secondary">EN</button>
+</div>
+<button class="relative flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-text-secondary transition-colors hover:bg-slate-200">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute right-2 top-2 flex h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+</button>
+<div class="h-10 w-10 overflow-hidden rounded-full border-2 border-primary/20 bg-slate-200">
+<img class="h-full w-full object-cover" data-alt="Photo de profil de l'utilisateur" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBen67xolATdTJDbe1u_NPW7KQCqU4URdf72v7KxRSXDBsPIH513-mBfxs38UVcDRC62XUHEX4-YHAwphVrrPyffdOYR6VVT2tgK372m1DcRSkxigOH_AQBAA8hkfGsvXHOt4W7RB-LkDKWc85EQ-NMaXDXiDhWf7vjDFsfoea80eZy0XK26N3VPVducj62CrY-CEO4go7XY4DF88G7Zg77Us3M567CoDtgkMvlUI7lGJBq9fvXdT_gRg6ylcxOScNT13mG632UEsDp"/>
+</div>
+</div>
+</header>
+<main class="mx-auto flex w-full max-w-[1440px] flex-col gap-6 p-6 lg:p-10">
+<!-- Stats Row -->
+<!-- Quick Filters -->
+<div class="flex flex-wrap items-center gap-4 mb-2 px-2">
+<span class="text-xs font-bold uppercase tracking-widest text-text-secondary">Filtres rapides :</span>
+<div class="flex items-center gap-2">
+<button class="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white shadow-sm">24h</button>
+<button class="rounded-full bg-white border border-slate-200 px-4 py-1.5 text-xs font-bold text-text-secondary hover:bg-slate-50">7 jours</button>
+<button class="rounded-full bg-white border border-slate-200 px-4 py-1.5 text-xs font-bold text-text-secondary hover:bg-slate-50">1 mois</button>
+<button class="flex items-center gap-2 rounded-full bg-white border border-slate-200 px-4 py-1.5 text-xs font-bold text-text-secondary hover:bg-slate-50">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+<span>Période personnalisée</span>
+</button>
+</div>
+</div><div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+<!-- Stat 1 -->
+<div class="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined rounded-lg bg-blue-50 p-2 text-blue-500">groups</span>
+<div class="h-6 w-16 bg-gradient-to-r from-blue-100 to-blue-500/20 [clip-path:polygon(0%_80%,20%_60%,40%_70%,60%_40%,80%_50%,100%_20%,100%_100%,0%_100%)]"></div>
+</div>
+<div>
+<p class="font-mono text-[10px] font-bold uppercase tracking-widest text-text-secondary">Groupes Monitorés</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold text-text-primary leading-none">1,284</span>
+<span class="text-xs font-semibold text-primary">+5.2%</span>
+</div>
+</div>
+</div>
+<!-- Stat 2 -->
+<div class="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined rounded-lg bg-primary/10 p-2 text-primary">target</span>
+<div class="h-6 w-16 bg-gradient-to-r from-primary/10 to-primary/40 [clip-path:polygon(0%_90%,20%_80%,40%_60%,60%_70%,80%_30%,100%_10%,100%_100%,0%_100%)]"></div>
+</div>
+<div>
+<p class="font-mono text-[10px] font-bold uppercase tracking-widest text-text-secondary">Opportunités (24h)</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold text-text-primary leading-none">42</span>
+<span class="text-xs font-semibold text-primary">+12%</span>
+</div>
+</div>
+</div>
+<!-- Stat 3 -->
+<div class="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined rounded-lg bg-amber-50 p-2 text-amber-500">analytics</span>
+<div class="h-6 w-16 bg-gradient-to-r from-amber-100 to-amber-500/20 [clip-path:polygon(0%_40%,20%_50%,40%_45%,60%_55%,80%_48%,100%_50%,100%_100%,0%_100%)]"></div>
+</div>
+<div>
+<p class="font-mono text-[10px] font-bold uppercase tracking-widest text-text-secondary">Score Moyen</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold text-text-primary leading-none">85.4%</span>
+<span class="text-xs font-semibold text-red-500">-1.8%</span>
+</div>
+</div>
+</div>
+<!-- Stat 4 -->
+<div class="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined rounded-lg bg-purple-50 p-2 text-purple-500">reply_all</span>
+<div class="h-6 w-16 bg-gradient-to-r from-purple-100 to-purple-500/20 [clip-path:polygon(0%_80%,20%_75%,40%_70%,60%_65%,80%_60%,100%_55%,100%_100%,0%_100%)]"></div>
+</div>
+<div>
+<p class="font-mono text-[10px] font-bold uppercase tracking-widest text-text-secondary">Taux de Réponse</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold text-text-primary leading-none">92%</span>
+<span class="text-xs font-semibold text-primary">+0.4%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Content Area -->
+<!-- Quick Filters -->
+<div class="flex flex-wrap items-center gap-4 mb-2 px-2">
+<span class="text-xs font-bold uppercase tracking-widest text-text-secondary">Filtres rapides :</span>
+<div class="flex items-center gap-2">
+<button class="rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white shadow-sm">24h</button>
+<button class="rounded-full bg-white border border-slate-200 px-4 py-1.5 text-xs font-bold text-text-secondary hover:bg-slate-50">7 jours</button>
+<button class="rounded-full bg-white border border-slate-200 px-4 py-1.5 text-xs font-bold text-text-secondary hover:bg-slate-50">1 mois</button>
+<button class="flex items-center gap-2 rounded-full bg-white border border-slate-200 px-4 py-1.5 text-xs font-bold text-text-secondary hover:bg-slate-50">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+<span>Période personnalisée</span>
+</button>
+</div>
+</div><div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+<!-- Main Feed (65%) -->
+<div class="flex flex-col gap-6 lg:col-span-8">
+<div class="flex items-center justify-between px-2">
+<h2 class="text-xl font-bold text-text-primary">Opportunités Récentes</h2>
+<button class="text-sm font-semibold text-primary hover:underline">Voir tout</button>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Card 1 (High Score) -->
+<div class="group flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md md:flex-row">
+<div class="flex h-32 w-full shrink-0 flex-col items-center justify-center rounded-lg bg-primary/5 border border-primary/20 md:w-48">
+<div class="relative flex items-center justify-center">
+<svg class="h-20 w-20 -rotate-90">
+<circle class="text-slate-100" cx="40" cy="40" fill="transparent" r="36" stroke="currentColor" stroke-width="6"></circle>
+<circle class="text-primary" cx="40" cy="40" fill="transparent" r="36" stroke="currentColor" stroke-dasharray="226.2" stroke-dashoffset="4.5" stroke-width="6"></circle>
+</svg>
+<span class="absolute text-2xl font-bold text-primary">98</span>
+</div>
+<span class="mt-1 font-mono text-[10px] font-bold uppercase text-primary">Score Opportunité</span>
+</div>
+<div class="flex flex-1 flex-col justify-between py-1">
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="font-mono text-[10px] font-bold tracking-tighter text-text-secondary">ID: #9822</span>
+</div>
+<span class="text-[11px] text-text-secondary">Il y a 5 min</span>
+</div>
+<h3 class="text-lg font-bold text-text-primary">Groupe Alpha - Recrutement Tech</h3>
+<p class="line-clamp-2 text-sm text-text-secondary">Demande urgente pour un développeur senior React/Tailwind. Budget validé, démarrage immédiat.</p>
+</div>
+<div class="mt-4 flex items-center justify-between">
+<div class="flex -space-x-2">
+<div class="h-6 w-6 rounded-full border-2 border-white bg-slate-200"></div>
+<div class="h-6 w-6 rounded-full border-2 border-white bg-slate-300"></div>
+<div class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-[8px] font-bold text-text-secondary">+3</div>
+</div>
+<button class="flex items-center gap-1 rounded-lg bg-slate-100 px-4 py-1.5 text-sm font-bold text-text-primary transition-colors hover:bg-primary hover:text-white">
+<span>Détails</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 2 (Medium Score) -->
+<div class="group flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-amber-300/30 hover:shadow-md md:flex-row">
+<div class="flex h-32 w-full shrink-0 flex-col items-center justify-center rounded-lg bg-amber-50 border border-amber-200 md:w-48">
+<div class="relative flex items-center justify-center">
+<svg class="h-20 w-20 -rotate-90">
+<circle class="text-slate-200" cx="40" cy="40" fill="transparent" r="36" stroke="currentColor" stroke-width="6"></circle>
+<circle class="text-amber-500" cx="40" cy="40" fill="transparent" r="36" stroke="currentColor" stroke-dasharray="226.2" stroke-dashoffset="56.5" stroke-width="6"></circle>
+</svg>
+<span class="absolute text-2xl font-bold text-amber-600">75</span>
+</div>
+<span class="mt-1 font-mono text-[10px] font-bold uppercase text-amber-600">Score Opportunité</span>
+</div>
+<div class="flex flex-1 flex-col justify-between py-1">
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="font-mono text-[10px] font-bold tracking-tighter text-text-secondary">ID: #9819</span>
+</div>
+<span class="text-[11px] text-text-secondary">Il y a 12 min</span>
+</div>
+<h3 class="text-lg font-bold text-text-primary">Groupe Bêta - Marketing Digital</h3>
+<p class="line-clamp-2 text-sm text-text-secondary">Recherche d'outils d'automatisation pour campagnes SEO. Volume de messages en hausse.</p>
+</div>
+<div class="mt-4 flex items-center justify-between">
+<div class="flex -space-x-2">
+<div class="h-6 w-6 rounded-full border-2 border-white bg-slate-400"></div>
+<div class="h-6 w-6 rounded-full border-2 border-white bg-slate-100 text-[8px] font-bold text-text-secondary">JD</div>
+</div>
+<button class="flex items-center gap-1 rounded-lg bg-slate-100 px-4 py-1.5 text-sm font-bold text-text-primary transition-colors hover:bg-primary hover:text-white">
+<span>Détails</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Card 3 (New) -->
+<div class="group flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-4 shadow-sm transition-all hover:border-slate-300/30 hover:shadow-md md:flex-row">
+<div class="flex h-32 w-full shrink-0 flex-col items-center justify-center rounded-lg bg-slate-50 border border-slate-200 md:w-48">
+<div class="relative flex items-center justify-center">
+<svg class="h-20 w-20 -rotate-90">
+<circle class="text-slate-200" cx="40" cy="40" fill="transparent" r="36" stroke="currentColor" stroke-width="6"></circle>
+<circle class="text-slate-400" cx="40" cy="40" fill="transparent" r="36" stroke="currentColor" stroke-dasharray="226.2" stroke-dashoffset="131.2" stroke-width="6"></circle>
+</svg>
+<span class="absolute text-2xl font-bold text-slate-500">42</span>
+</div>
+<span class="mt-1 font-mono text-[10px] font-bold uppercase text-slate-500">Score Opportunité</span>
+</div>
+<div class="flex flex-1 flex-col justify-between py-1">
+<div class="flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="font-mono text-[10px] font-bold tracking-tighter text-text-secondary">ID: #9815</span>
+</div>
+<span class="text-[11px] text-text-secondary">Il y a 45 min</span>
+</div>
+<h3 class="text-lg font-bold text-text-primary">Groupe Gamma - Innovation</h3>
+<p class="line-clamp-2 text-sm text-text-secondary">Veille technologique sur l'IA générative dans le domaine juridique. Intérêt informatif.</p>
+</div>
+<div class="mt-4 flex items-center justify-between">
+<div class="flex -space-x-2">
+<div class="h-6 w-6 rounded-full border-2 border-white bg-slate-200"></div>
+</div>
+<button class="flex items-center gap-1 rounded-lg bg-slate-100 px-4 py-1.5 text-sm font-bold text-text-primary transition-colors hover:bg-primary hover:text-white">
+<span>Détails</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sidebar (35%) -->
+<div class="flex flex-col gap-6 lg:col-span-4">
+<!-- Top Groups List -->
+<div class="flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+<h2 class="text-lg font-bold text-text-primary">Groupes les plus actifs</h2>
+<div class="flex flex-col gap-5">
+<div class="space-y-2">
+<div class="flex items-center justify-between text-sm">
+<span class="font-medium text-text-primary">Tech Founders Paris</span>
+<span class="font-mono text-xs font-bold text-text-secondary">88%</span>
+</div>
+<div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+<div class="h-full w-[88%] bg-primary"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex items-center justify-between text-sm">
+<span class="font-medium text-text-primary">Growth Hackers FR</span>
+<span class="font-mono text-xs font-bold text-text-secondary">72%</span>
+</div>
+<div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+<div class="h-full w-[72%] bg-primary/70"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex items-center justify-between text-sm">
+<span class="font-medium text-text-primary">SaaS Community</span>
+<span class="font-mono text-xs font-bold text-text-secondary">54%</span>
+</div>
+<div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+<div class="h-full w-[54%] bg-primary/40"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex items-center justify-between text-sm">
+<span class="font-medium text-text-primary">Web3 Builders</span>
+<span class="font-mono text-xs font-bold text-text-secondary">31%</span>
+</div>
+<div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+<div class="h-full w-[31%] bg-slate-300"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Tag Cloud -->
+<div class="flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+<h2 class="text-lg font-bold text-text-primary">Mots-clés déclenchés</h2>
+<div class="flex flex-wrap gap-2">
+<span class="cursor-pointer rounded-lg bg-primary/5 px-3 py-1 text-sm font-medium text-primary hover:bg-primary/10">#recrutement</span>
+<span class="cursor-pointer rounded-lg bg-slate-100 px-3 py-1 text-sm font-medium text-text-secondary hover:bg-slate-200">#react</span>
+<span class="cursor-pointer rounded-lg bg-primary/5 px-3 py-1 text-sm font-medium text-primary hover:bg-primary/10">#budget</span>
+<span class="cursor-pointer rounded-lg bg-slate-100 px-3 py-1 text-sm font-medium text-text-secondary hover:bg-slate-200">#freelance</span>
+<span class="cursor-pointer rounded-lg bg-slate-100 px-3 py-1 text-sm font-medium text-text-secondary hover:bg-slate-200">#marketing</span>
+<span class="cursor-pointer rounded-lg bg-primary/5 px-3 py-1 text-sm font-medium text-primary hover:bg-primary/10">#automatisation</span>
+<span class="cursor-pointer rounded-lg bg-slate-100 px-3 py-1 text-sm font-medium text-text-secondary hover:bg-slate-200">#seo</span>
+<span class="cursor-pointer rounded-lg bg-slate-100 px-3 py-1 text-sm font-medium text-text-secondary hover:bg-slate-200">#ia</span>
+<span class="cursor-pointer rounded-lg bg-primary/5 px-3 py-1 text-sm font-medium text-primary hover:bg-primary/10">#urgent</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed bottom-8 right-8 flex items-center gap-3 rounded-full bg-primary px-6 py-4 text-white shadow-xl shadow-primary/20 transition-all hover:-translate-y-1 hover:bg-emerald-600 active:scale-95">
+<span class="material-symbols-outlined text-[24px]">radar</span>
+<span class="font-bold tracking-wide">Scan manuel</span>
+</button>
+</div>
+</body></html>
