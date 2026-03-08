@@ -5,14 +5,16 @@ FROM rust:latest AS deps
 WORKDIR /app
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 COPY Cargo.toml Cargo.lock ./
-RUN mkdir src && echo "fn main() {}" > src/main.rs
+# Dummy main + migrations for dep compilation
+RUN mkdir -p src migrations && echo "fn main() {}" > src/main.rs && touch migrations/001_initial.sql
 RUN cargo build --release
-RUN rm -rf src
+RUN rm -rf src migrations
 
 # ============================================================
 # Stage 2: Build application (only recompiles our code)
 # ============================================================
 FROM deps AS builder
+COPY migrations ./migrations
 COPY src ./src
 RUN touch src/main.rs && cargo build --release
 

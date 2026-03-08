@@ -16,9 +16,9 @@ pub async fn init_pool(database_url: &str) -> PgPool {
 }
 
 pub async fn run_migrations(pool: &PgPool) {
-    let sql = include_str!("../migrations/001_initial.sql");
+    let sql: &str = include_str!("../migrations/001_initial.sql");
     for statement in sql.split(';') {
-        let trimmed = statement.trim();
+        let trimmed: &str = statement.trim();
         if trimmed.is_empty() {
             continue;
         }
