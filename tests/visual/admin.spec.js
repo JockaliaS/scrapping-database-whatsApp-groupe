@@ -4,7 +4,7 @@ const { login } = require('./helpers');
 test.describe('Admin Page', () => {
 
   test.beforeEach(async ({ page }) => {
-    await login(page, 'admin@radar.jockaliaservices.fr', 'Radar@2026!');
+    await login(page);
   });
 
   test('Admin page displays all sections', async ({ page }) => {
