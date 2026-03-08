@@ -1,33 +1,23 @@
 # ============================================================
-# Stage 1: cargo-chef — compute dependency recipe
+# Stage 1: Build dependencies (cached unless Cargo.toml changes)
 # ============================================================
-FROM rust:1.77-slim AS chef
-RUN cargo install cargo-chef --locked
+FROM rust:1.83-slim AS deps
 WORKDIR /app
-
-# ============================================================
-# Stage 2: Prepare — generate recipe.json (dependency lock)
-# ============================================================
-FROM chef AS planner
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 COPY Cargo.toml Cargo.lock ./
-COPY src ./src
-RUN cargo chef prepare --recipe-path recipe.json
-
-# ============================================================
-# Stage 3: Build dependencies (cached unless Cargo.toml changes)
-# ============================================================
-FROM chef AS builder
-COPY --from=planner /app/recipe.json recipe.json
-# This layer is cached as long as dependencies don't change
-RUN cargo chef cook --release --recipe-path recipe.json
-
-# Now copy actual source and build (only recompiles our code)
-COPY Cargo.toml Cargo.lock ./
-COPY src ./src
+RUN mkdir src && echo "fn main() {}" > src/main.rs
 RUN cargo build --release
+RUN rm -rf src
 
 # ============================================================
-# Stage 4: Runtime — minimal image
+# Stage 2: Build application (only recompiles our code)
+# ============================================================
+FROM deps AS builder
+COPY src ./src
+RUN touch src/main.rs && cargo build --release
+
+# ============================================================
+# Stage 3: Runtime — minimal image
 # ============================================================
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates libssl3 curl && rm -rf /var/lib/apt/lists/*
