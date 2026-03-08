@@ -17,6 +17,8 @@ const RADAR_WEBHOOK_SECRET =
 let authToken = null;
 let adminToken = null;
 let opportunityId = null;
+const TEST_EMAIL = `test_${Date.now()}@radar.test`;
+const ADMIN_TEST_EMAIL = `admin_${Date.now()}@radar.test`;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -80,7 +82,7 @@ async function testAuth() {
   // 2. Register
   const reg = await request("POST", "/auth/register", {
     body: {
-      email: "test@radar.test",
+      email: TEST_EMAIL,
       password: "Test1234!",
       full_name: "Test User",
     },
@@ -92,7 +94,7 @@ async function testAuth() {
   // 3. Duplicate register
   const dup = await request("POST", "/auth/register", {
     body: {
-      email: "test@radar.test",
+      email: TEST_EMAIL,
       password: "Test1234!",
       full_name: "Test User",
     },
@@ -101,7 +103,7 @@ async function testAuth() {
 
   // 4. Login success
   const login = await request("POST", "/auth/login", {
-    body: { email: "test@radar.test", password: "Test1234!" },
+    body: { email: TEST_EMAIL, password: "Test1234!" },
   });
   assert(login.status === 200, "POST /auth/login valid credentials returns 200", `got ${login.status}`);
   if (login.data && login.data.token) authToken = login.data.token;
@@ -109,7 +111,7 @@ async function testAuth() {
 
   // 5. Login wrong password
   const bad = await request("POST", "/auth/login", {
-    body: { email: "test@radar.test", password: "wrong" },
+    body: { email: TEST_EMAIL, password: "wrong" },
   });
   assert(bad.status === 401, "POST /auth/login wrong password returns 401", `got ${bad.status}`);
 }
@@ -308,7 +310,7 @@ async function testAdmin() {
   // 20. Register admin user (will be regular, not actually admin)
   const reg = await request("POST", "/auth/register", {
     body: {
-      email: "admin-test@radar.test",
+      email: ADMIN_TEST_EMAIL,
       password: "Admin1234!",
     },
   });

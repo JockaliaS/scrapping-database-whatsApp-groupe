@@ -185,3 +185,48 @@ pub async fn delete_hub_spoke_token(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+// --- Admin group management ---
+
+#[derive(serde::Deserialize)]
+pub struct CreateGroupRequest {
+    pub user_id: Uuid,
+    pub whatsapp_group_id: String,
+    pub name: String,
+    pub member_count: Option<i32>,
+    pub is_monitored: Option<bool>,
+}
+
+pub async fn create_group(
+    State(state): State<AppState>,
+    _admin_id: Uuid,
+    Json(req): Json<CreateGroupRequest>,
+) -> Result<(StatusCode, Json<serde_json::Value>), AppError> {
+    let id = Uuid::new_v4();
+    let monitored = req.is_monitored.unwrap_or(true);
+
+    sqlx::query(
+        r#"INSERT INTO groups (id, user_id, whatsapp_group_id, name, member_count, is_monitored)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (user_id, whatsapp_group_id) DO UPDATE
+           SET name = $4, member_count = $5, is_monitored = $6"#,
+    )
+    .bind(id)
+    .bind(req.user_id)
+    .bind(&req.whatsapp_group_id)
+    .bind(&req.name)
+    .bind(req.member_count.unwrap_or(0))
+    .bind(monitored)
+    .execute(&state.db)
+    .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({
+            "id": id,
+            "whatsapp_group_id": req.whatsapp_group_id,
+            "name": req.name,
+            "is_monitored": monitored
+        })),
+    ))
+}

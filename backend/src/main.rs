@@ -141,7 +141,8 @@ async fn main() {
         .route("/api/admin/config", get(admin_get_config).put(admin_update_config))
         .route("/api/admin/logs", get(admin_get_logs))
         .route("/api/admin/hub-spoke-tokens", get(admin_list_tokens).post(admin_create_token))
-        .route("/api/admin/hub-spoke-tokens/{id}", delete(admin_delete_token));
+        .route("/api/admin/hub-spoke-tokens/{id}", delete(admin_delete_token))
+        .route("/api/admin/groups", post(admin_create_group));
 
     // WebSocket route
     let ws_route = Router::new().route("/ws", get(ws_handler));
@@ -439,6 +440,15 @@ async fn admin_delete_token(
 ) -> Result<impl IntoResponse, errors::AppError> {
     let admin_id = extract_admin_id(&headers, &state.config.jwt_secret)?;
     routes::admin::delete_hub_spoke_token(State(state), admin_id, path).await.map(|s| s.into_response())
+}
+
+async fn admin_create_group(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: axum::Json<routes::admin::CreateGroupRequest>,
+) -> Result<impl IntoResponse, errors::AppError> {
+    let admin_id = extract_admin_id(&headers, &state.config.jwt_secret)?;
+    routes::admin::create_group(State(state), admin_id, body).await.map(|(s, j)| (s, j).into_response())
 }
 
 // WebSocket handler
