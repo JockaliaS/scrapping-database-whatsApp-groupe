@@ -59,6 +59,7 @@ async fn main() {
     // Database
     let db = db::init_pool(&config.database_url).await;
     db::run_migrations(&db).await;
+    db::seed_admin(&db, &config).await;
 
     // Redis
     let redis = match deadpool_redis::Config::from_url(&config.redis_url)

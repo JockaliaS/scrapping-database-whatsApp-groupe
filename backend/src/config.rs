@@ -15,6 +15,8 @@ pub struct Config {
     pub app_env: String,
     pub commit_hash: String,
     pub port: u16,
+    pub admin_email: String,
+    pub admin_password: String,
 }
 
 impl Config {
@@ -43,6 +45,10 @@ impl Config {
                 .unwrap_or_else(|_| "8000".into())
                 .parse()
                 .unwrap_or(8000),
+            admin_email: env::var("ADMIN_EMAIL")
+                .unwrap_or_else(|_| "admin@radar.jockaliaservices.fr".into()),
+            admin_password: env::var("ADMIN_PASSWORD")
+                .unwrap_or_else(|_| "Radar@2026!".into()),
         }
     }
 }
