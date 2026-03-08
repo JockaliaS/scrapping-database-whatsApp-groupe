@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+.mono-label {
+  font-family: 'JetBrains Mono', 'Space Grotesk', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mono-text {
+  font-family: 'JetBrains Mono', 'Space Grotesk', monospace;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+@layer utilities {
+  .animate-in {
+    animation: animateIn 0.7s ease-out forwards;
+  }
+}
+
+@keyframes animateIn {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

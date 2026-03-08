@@ -1,0 +1,17 @@
+{
+  "name": "radar-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Radar WhatsApp community intelligence platform",
+  "type": "module",
+  "bin": {
+    "radar-mcp-server": "./index.js"
+  },
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "ws": "^8.18.0"
+  }
+}

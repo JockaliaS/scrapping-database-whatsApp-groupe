@@ -1,0 +1,2 @@
+fn(axum::extract::State<AppState>, HeaderMap, axum::extract::Query<OpportunityFilter>) -> impl futures_util::Future<Output = Result<impl IntoResponse, AppError>> {opportunities_list}
+fn(axum::extract::State<AppState>, HeaderMap, axum::extract::Query<OpportunityFilter>) -> impl futures_util::Future<Output = Result<impl IntoResponse, AppError>> {opportunities_list}: Handler<_, _>

@@ -1,0 +1,577 @@
+openapi: 3.0.3
+info:
+  title: Radar API
+  description: WhatsApp Community Intelligence SaaS
+  version: 1.0.0
+servers:
+  - url: https://api.radar.jockaliaservices.fr
+    description: Production
+  - url: http://localhost:8000
+    description: Development
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    hmacAuth:
+      type: apiKey
+      in: header
+      name: X-Radar-Signature
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        full_name: { type: string }
+        role: { type: string, enum: [user, admin] }
+        is_active: { type: boolean }
+        language: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Profile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        raw_text: { type: string }
+        keywords: { type: array, items: { type: string } }
+        anti_keywords: { type: array, items: { type: string } }
+        intentions: { type: array, items: { type: string } }
+        sector: { type: string }
+        min_score: { type: integer }
+        alert_number: { type: string }
+        alert_template: { type: string }
+        sharing_enabled: { type: boolean }
+        onboarding_complete: { type: boolean }
+
+    Group:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        whatsapp_group_id: { type: string }
+        name: { type: string }
+        member_count: { type: integer }
+        last_activity: { type: string, format: date-time }
+        is_monitored: { type: boolean }
+
+    Opportunity:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        message_id: { type: string, format: uuid }
+        group_id: { type: string, format: uuid }
+        contact_id: { type: string, format: uuid }
+        score: { type: integer }
+        matched_keywords: { type: array, items: { type: string } }
+        context_analysis: { type: string }
+        suggested_reply: { type: string }
+        is_demand: { type: boolean }
+        is_offer: { type: boolean }
+        status: { type: string, enum: [new, contacted, in_progress, won, not_relevant] }
+        alert_sent: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    Message:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        group_id: { type: string, format: uuid }
+        sender_name: { type: string }
+        sender_phone: { type: string }
+        content: { type: string }
+        whatsapp_timestamp: { type: string, format: date-time }
+
+    HealthResponse:
+      type: object
+      properties:
+        status: { type: string }
+        version: { type: string }
+        commit: { type: string }
+        timestamp: { type: string, format: date-time }
+        services:
+          type: object
+          properties:
+            database: { type: object }
+            redis: { type: object }
+            gemini: { type: object }
+            evolution_api: { type: object }
+        websocket_connections: { type: integer }
+        uptime_seconds: { type: integer }
+
+    HubSpokePayload:
+      type: object
+      required: [group_id, content, timestamp]
+      properties:
+        group_id: { type: string }
+        group_name: { type: string }
+        sender_phone: { type: string }
+        sender_name: { type: string }
+        content: { type: string }
+        timestamp: { type: integer }
+        raw: { type: object }
+
+    AuthRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string }
+
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user: { $ref: '#/components/schemas/User' }
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthResponse' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401':
+          description: Invalid credentials
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/AuthRequest'
+                - type: object
+                  properties:
+                    full_name: { type: string }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+
+  /api/profile:
+    get:
+      tags: [Profile]
+      security: [{ bearerAuth: [] }]
+      summary: Get current user profile
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+    put:
+      tags: [Profile]
+      security: [{ bearerAuth: [] }]
+      summary: Update profile
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Profile' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+
+  /api/profile/generate-keywords:
+    post:
+      tags: [Profile]
+      security: [{ bearerAuth: [] }]
+      summary: Generate keywords from profile text via Gemini
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                raw_text: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keywords: { type: array, items: { type: string } }
+                  anti_keywords: { type: array, items: { type: string } }
+                  intentions: { type: array, items: { type: string } }
+                  sector: { type: string }
+
+  /api/groups:
+    get:
+      tags: [Groups]
+      security: [{ bearerAuth: [] }]
+      summary: List user groups
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Group' }
+
+  /api/groups/{id}/toggle:
+    put:
+      tags: [Groups]
+      security: [{ bearerAuth: [] }]
+      summary: Toggle group monitoring
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Group' }
+
+  /api/opportunities:
+    get:
+      tags: [Opportunities]
+      security: [{ bearerAuth: [] }]
+      summary: List opportunities with filters
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: group_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: score_min
+          in: query
+          schema: { type: integer }
+        - name: score_max
+          in: query
+          schema: { type: integer }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Opportunity' }
+
+  /api/opportunities/{id}:
+    get:
+      tags: [Opportunities]
+      security: [{ bearerAuth: [] }]
+      summary: Get opportunity detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Opportunity' }
+
+  /api/opportunities/{id}/status:
+    patch:
+      tags: [Opportunities]
+      security: [{ bearerAuth: [] }]
+      summary: Update opportunity status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [new, contacted, in_progress, won, not_relevant] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Opportunity' }
+
+  /api/contacts/{phone}/history:
+    get:
+      tags: [Contacts]
+      security: [{ bearerAuth: [] }]
+      summary: Get contact history
+      parameters:
+        - name: phone
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contact: { type: object }
+                  opportunities: { type: array, items: { $ref: '#/components/schemas/Opportunity' } }
+
+  /api/scan/historical:
+    post:
+      tags: [Scan]
+      security: [{ bearerAuth: [] }]
+      summary: Start historical scan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                group_ids: { type: array, items: { type: string, format: uuid } }
+                from: { type: string, format: date-time }
+                to: { type: string, format: date-time }
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scan_id: { type: string, format: uuid }
+
+  /api/scan/status/{scan_id}:
+    get:
+      tags: [Scan]
+      security: [{ bearerAuth: [] }]
+      summary: Get scan status
+      parameters:
+        - name: scan_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  progress: { type: number }
+                  messages_scanned: { type: integer }
+                  matches_found: { type: integer }
+
+  /api/whatsapp/connect:
+    post:
+      tags: [WhatsApp]
+      security: [{ bearerAuth: [] }]
+      summary: Create WhatsApp connection
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  instance_name: { type: string }
+                  qr_code: { type: string }
+
+  /api/whatsapp/qr:
+    get:
+      tags: [WhatsApp]
+      security: [{ bearerAuth: [] }]
+      summary: Get QR code for WhatsApp connection
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  qr_code: { type: string }
+                  status: { type: string }
+
+  /api/whatsapp/status:
+    get:
+      tags: [WhatsApp]
+      security: [{ bearerAuth: [] }]
+      summary: Get WhatsApp connection status
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  connected_number: { type: string }
+
+  /api/whatsapp/disconnect:
+    delete:
+      tags: [WhatsApp]
+      security: [{ bearerAuth: [] }]
+      summary: Disconnect WhatsApp
+      responses:
+        '200':
+          description: Disconnected
+
+  /webhook/hub-spoke:
+    post:
+      tags: [Webhook]
+      summary: Receive messages from Hub (HMAC auth)
+      parameters:
+        - name: X-Radar-Signature
+          in: header
+          required: true
+          schema: { type: string }
+        - name: X-Radar-Timestamp
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HubSpokePayload' }
+      responses:
+        '200':
+          description: Message received
+        '401':
+          description: Invalid signature or replay
+
+  /ws:
+    get:
+      tags: [WebSocket]
+      summary: WebSocket connection (JWT via query param)
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '101':
+          description: WebSocket upgrade
+
+  /api/admin/users:
+    get:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: List all users (admin only)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/User' }
+
+  /api/admin/users/{id}:
+    patch:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Update user (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+
+  /api/admin/config:
+    get:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Get system config (admin only)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+    put:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Update system config (admin only)
+      responses:
+        '200':
+          description: Updated
+
+  /api/admin/logs:
+    get:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Get system logs (admin only)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+
+  /api/admin/hub-spoke-tokens:
+    get:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: List hub-spoke tokens (admin only)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+    post:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Create hub-spoke token (admin only)
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { type: object }
+
+  /api/admin/hub-spoke-tokens/{id}:
+    delete:
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Delete hub-spoke token (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204':
+          description: Deleted

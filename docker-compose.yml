@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  radar-backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - EVOLUTION_API_URL=${EVOLUTION_API_URL}
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY}
+      - RADAR_WEBHOOK_SECRET=${RADAR_WEBHOOK_SECRET}
+      - FRONTEND_URL=https://radar.jockaliaservices.fr
+      - BACKEND_URL=https://api.radar.jockaliaservices.fr
+      - APP_ENV=${APP_ENV:-production}
+      - COMMIT_HASH=${COMMIT_HASH:-local}
+      - RUST_LOG=${RUST_LOG:-info}
+    restart: unless-stopped
+
+  radar-frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=https://api.radar.jockaliaservices.fr
+      - VITE_WS_URL=wss://api.radar.jockaliaservices.fr
+    restart: unless-stopped
