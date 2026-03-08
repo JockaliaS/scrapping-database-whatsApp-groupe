@@ -8,8 +8,10 @@ pub async fn connect(
     State(state): State<AppState>,
     user_id: Uuid,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let evolution = state.evolution.as_ref()
-        .ok_or_else(|| AppError::Internal("Evolution API not configured".into()))?;
+    let evolution = match state.evolution.as_ref() {
+        Some(e) => e,
+        None => return Err(AppError::BadRequest("Evolution API not configured. Set it up in Admin settings.".into())),
+    };
 
     let instance_name = format!("radar-{}", user_id.to_string().split('-').next().unwrap_or("user"));
 
@@ -56,16 +58,27 @@ pub async fn get_qr(
     State(state): State<AppState>,
     user_id: Uuid,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let evolution = state.evolution.as_ref()
-        .ok_or_else(|| AppError::Internal("Evolution API not configured".into()))?;
+    let evolution = match state.evolution.as_ref() {
+        Some(e) => e,
+        None => return Ok(Json(serde_json::json!({
+            "status": "not_configured",
+            "qr_code": null
+        }))),
+    };
 
-    let conn = sqlx::query_as::<_, (String, String)>(
+    let conn = match sqlx::query_as::<_, (String, String)>(
         "SELECT instance_name, status FROM whatsapp_connections WHERE user_id = $1"
     )
     .bind(user_id)
     .fetch_optional(&state.db)
     .await?
-    .ok_or_else(|| AppError::NotFound("No WhatsApp connection found".into()))?;
+    {
+        Some(c) => c,
+        None => return Ok(Json(serde_json::json!({
+            "status": "disconnected",
+            "qr_code": null
+        }))),
+    };
 
     let qr = evolution
         .get_qr_code(&conn.0)
