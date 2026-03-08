@@ -4,29 +4,39 @@ test.describe('Authentication Pages', () => {
 
   test('Login page displays correctly', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: 'screenshots/login-page.png', fullPage: true });
 
-    // Verify "RADAR" title is visible
-    const radarTitle = page.locator('text=RADAR');
-    await expect(radarTitle).toBeVisible();
+    // Verify "RADAR" branding is visible
+    await expect(page.getByText('RADAR').first()).toBeVisible();
+
+    // Verify "Connexion" heading
+    await expect(page.getByText('Connexion').first()).toBeVisible();
+
+    // Verify "Se connecter" button
+    await expect(page.getByText('Se connecter').first()).toBeVisible();
+
+    // Verify "Creer un compte" link (no accent)
+    await expect(page.getByText('Creer un compte').first()).toBeVisible();
   });
 
   test('Login with credentials shows redirect or error', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForTimeout(2000);
 
     // Fill email and password
-    await page.fill('input[type="email"], input[name="email"]', 'admin@radar.jockaliaservices.fr');
-    await page.fill('input[type="password"], input[name="password"]', 'Radar@2026!');
+    await page.locator('input[type="email"], input[name="email"]').first().fill('admin@radar.jockaliaservices.fr');
+    await page.locator('input[type="password"], input[name="password"]').first().fill('Radar@2026!');
 
     await page.screenshot({ path: 'screenshots/login-filled.png', fullPage: true });
 
-    // Click login button
-    await page.click('button[type="submit"], button:has-text("Connexion"), button:has-text("Login")');
+    // Click "Se connecter" button
+    await page.getByText('Se connecter').first().click();
 
     // Wait for either redirect or error message
     await Promise.race([
       page.waitForURL('**/dashboard**', { timeout: 10000 }),
-      page.waitForSelector('[role="alert"], .error, .toast, text=erreur, text=error', { timeout: 10000 }),
+      page.waitForSelector('[role="alert"], .error, .toast', { timeout: 10000 }),
     ]).catch(() => {});
 
     await page.screenshot({ path: 'screenshots/login-result.png', fullPage: true });
@@ -34,9 +44,10 @@ test.describe('Authentication Pages', () => {
 
   test('Register page displays correctly and form submission', async ({ page }) => {
     await page.goto('/register');
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: 'screenshots/register-page.png', fullPage: true });
 
-    // Fill registration form
+    // Fill registration form if fields are visible
     const nameInput = page.locator('input[name="name"], input[name="nom"], input[placeholder*="nom"], input[placeholder*="name"]').first();
     if (await nameInput.isVisible().catch(() => false)) {
       await nameInput.fill('Test User');
@@ -60,8 +71,8 @@ test.describe('Authentication Pages', () => {
 
     await page.screenshot({ path: 'screenshots/register-filled.png', fullPage: true });
 
-    // Submit
-    const submitBtn = page.locator('button[type="submit"], button:has-text("Inscription"), button:has-text("Register"), button:has-text("Créer")').first();
+    // Submit - look for "Creer un compte" or similar button (no accents)
+    const submitBtn = page.locator('button[type="submit"]').first();
     if (await submitBtn.isVisible().catch(() => false)) {
       await submitBtn.click();
 
@@ -78,10 +89,11 @@ test.describe('Authentication Pages', () => {
 
   test('Login with admin credentials', async ({ page }) => {
     await page.goto('/login');
+    await page.waitForTimeout(2000);
 
-    await page.fill('input[type="email"], input[name="email"]', 'admin@radar.jockaliaservices.fr');
-    await page.fill('input[type="password"], input[name="password"]', 'Radar@2026!');
-    await page.click('button[type="submit"], button:has-text("Connexion"), button:has-text("Login")');
+    await page.locator('input[type="email"], input[name="email"]').first().fill('admin@radar.jockaliaservices.fr');
+    await page.locator('input[type="password"], input[name="password"]').first().fill('Radar@2026!');
+    await page.getByText('Se connecter').first().click();
 
     await Promise.race([
       page.waitForURL('**/dashboard**', { timeout: 10000 }),
