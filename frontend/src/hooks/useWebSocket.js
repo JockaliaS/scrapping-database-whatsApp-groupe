@@ -7,6 +7,8 @@ export default function useWebSocket() {
   const [connected, setConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [newOpportunities, setNewOpportunities] = useState([]);
+  const [qrCode, setQrCode] = useState(null);
+  const [whatsappStatus, setWhatsappStatus] = useState(null);
   const wsRef = useRef(null);
   const reconnectDelayRef = useRef(1000);
   const reconnectTimeoutRef = useRef(null);
@@ -32,6 +34,10 @@ export default function useWebSocket() {
           const data = JSON.parse(event.data);
           if (data.type === 'new_opportunity') {
             setNewOpportunities((prev) => [data.data, ...prev]);
+          } else if (data.type === 'qr_update') {
+            setQrCode(data.data?.qr_code || null);
+          } else if (data.type === 'connection_update') {
+            setWhatsappStatus(data.data?.status || null);
           }
         } catch {
           // ignore invalid JSON
@@ -65,6 +71,14 @@ export default function useWebSocket() {
     setNewOpportunities([]);
   }, []);
 
+  const clearQrCode = useCallback(() => {
+    setQrCode(null);
+  }, []);
+
+  const clearWhatsappStatus = useCallback(() => {
+    setWhatsappStatus(null);
+  }, []);
+
   useEffect(() => {
     connect();
     return () => {
@@ -73,5 +87,14 @@ export default function useWebSocket() {
     };
   }, [connect]);
 
-  return { connected, newOpportunities, connectionStatus, clearOpportunities };
+  return {
+    connected,
+    newOpportunities,
+    connectionStatus,
+    clearOpportunities,
+    qrCode,
+    clearQrCode,
+    whatsappStatus,
+    clearWhatsappStatus,
+  };
 }

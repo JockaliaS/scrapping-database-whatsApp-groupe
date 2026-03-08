@@ -19,7 +19,7 @@ pub async fn connect(
         None => return Err(AppError::BadRequest("Evolution API not configured. Set it up in Admin settings.".into())),
     };
 
-    let instance_name = format!("radar-{}", user_id.to_string().split('-').next().unwrap_or("user"));
+    let instance_name = format!("radar_{}", user_id.to_string().split('-').next().unwrap_or("user"));
 
     // Create instance (ignore "already exists" errors)
     let create_result = evolution.create_instance(&instance_name).await;
@@ -34,7 +34,7 @@ pub async fn connect(
 
     // Save connection — try update first, then insert
     let updated = sqlx::query(
-        "UPDATE whatsapp_connections SET instance_name = $1, status = 'connecting', updated_at = NOW() WHERE user_id = $2"
+        "UPDATE whatsapp_connections SET instance_name = $1, status = 'awaiting_qr', updated_at = NOW() WHERE user_id = $2"
     )
     .bind(&instance_name)
     .bind(user_id)
@@ -43,7 +43,7 @@ pub async fn connect(
 
     if updated.rows_affected() == 0 {
         sqlx::query(
-            "INSERT INTO whatsapp_connections (id, user_id, instance_name, status) VALUES ($1, $2, $3, 'connecting')"
+            "INSERT INTO whatsapp_connections (id, user_id, instance_name, status) VALUES ($1, $2, $3, 'awaiting_qr')"
         )
         .bind(Uuid::new_v4())
         .bind(user_id)
@@ -52,11 +52,8 @@ pub async fn connect(
         .await?;
     }
 
-    // Set webhook
-    let webhook_url = "https://api.radar.jockaliaservices.fr/webhook/hub-spoke";
-    if let Err(e) = evolution.set_webhook(&instance_name, webhook_url).await {
-        tracing::warn!("Failed to set webhook for {}: {}", instance_name, e);
-    }
+    // DO NOT set webhook — Radar never touches instance webhooks.
+    // Evolution API sends events via the global webhook.
 
     // Get QR code
     match evolution.get_qr_code(&instance_name).await {
@@ -65,7 +62,7 @@ pub async fn connect(
             Ok(Json(serde_json::json!({
                 "instance_name": instance_name,
                 "qr_code": qr_code,
-                "status": "connecting"
+                "status": "awaiting_qr"
             })))
         }
         Err(e) => {
@@ -223,11 +220,8 @@ pub async fn connect_existing(
         Err(_) => "unknown".to_string(),
     };
 
-    // Configure webhook
-    let webhook_url = "https://api.radar.jockaliaservices.fr/webhook/hub-spoke";
-    if let Err(e) = evolution.set_webhook(&instance_name, webhook_url).await {
-        tracing::warn!("Failed to set webhook for {}: {}", instance_name, e);
-    }
+    // DO NOT set webhook — Radar never touches instance webhooks.
+    // Evolution API sends events via the global webhook.
 
     // Save to whatsapp_connections
     let db_status = if status_str == "open" { "connected" } else { "connecting" };
@@ -256,7 +250,7 @@ pub async fn connect_existing(
     Ok(Json(serde_json::json!({
         "status": db_status,
         "instance_name": instance_name,
-        "webhook_url": webhook_url
+        "message": "Instance verifiee et connectee a Radar. Assurez-vous que le webhook global est configure dans Evolution API."
     })))
 }
 
@@ -304,12 +298,16 @@ pub async fn disconnect(
     .await?;
 
     if let Some((instance,)) = conn {
-        if let Some(evolution) = &state.evolution {
-            let _ = evolution.delete_instance(&instance).await;
+        // Only delete the instance from Evolution API if it was created by Radar (starts with "radar_")
+        if instance.starts_with("radar_") {
+            if let Some(evolution) = &state.evolution {
+                let _ = evolution.delete_instance(&instance).await;
+            }
         }
+        // Otherwise, just remove the DB entry (don't touch the instance)
 
         sqlx::query(
-            "UPDATE whatsapp_connections SET status = 'disconnected', updated_at = NOW() WHERE user_id = $1"
+            "DELETE FROM whatsapp_connections WHERE user_id = $1"
         )
         .bind(user_id)
         .execute(&state.db)

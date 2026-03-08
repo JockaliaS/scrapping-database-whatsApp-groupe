@@ -115,7 +115,8 @@ async fn main() {
         .route("/health", get(routes::health::health_check))
         .route("/auth/login", post(routes::auth::login))
         .route("/auth/register", post(routes::auth::register))
-        .route("/webhook/hub-spoke", post(routes::webhook::hub_spoke_webhook));
+        .route("/webhook/hub-spoke", post(routes::webhook::hub_spoke_webhook))
+        .route("/webhook/global", post(routes::webhook::global_webhook));
 
     // Authenticated routes
     let api_routes = Router::new()

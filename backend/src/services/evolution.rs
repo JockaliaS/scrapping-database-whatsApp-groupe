@@ -121,35 +121,6 @@ impl EvolutionService {
         Ok(resp.status().is_success())
     }
 
-    pub async fn set_webhook(&self, instance_name: &str, webhook_url: &str) -> anyhow::Result<Value> {
-        let url = format!("{}/webhook/set/{}", self.base_url, instance_name);
-        let resp = self.client
-            .post(&url)
-            .header("apikey", &self.api_key)
-            .json(&json!({
-                "webhook": {
-                    "enabled": true,
-                    "url": webhook_url,
-                    "webhookByEvents": false,
-                    "webhookBase64": false,
-                    "events": ["MESSAGES_UPSERT"]
-                }
-            }))
-            .send()
-            .await?;
-        self.check_response(resp).await
-    }
-
-    pub async fn get_webhook(&self, instance_name: &str) -> anyhow::Result<Value> {
-        let url = format!("{}/webhook/find/{}", self.base_url, instance_name);
-        let resp = self.client
-            .get(&url)
-            .header("apikey", &self.api_key)
-            .send()
-            .await?;
-        self.check_response(resp).await
-    }
-
     pub async fn list_instances(&self) -> anyhow::Result<Vec<Value>> {
         let url = format!("{}/instance/fetchInstances", self.base_url);
         let resp = self.client

@@ -12,53 +12,38 @@ use crate::services::hub_spoke::verify_hub_spoke;
 use crate::services::matching::fast_keyword_filter;
 use crate::AppState;
 
-pub async fn hub_spoke_webhook(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    body: Bytes,
-) -> Result<StatusCode, AppError> {
-    // Extract headers
-    let signature = headers
-        .get("X-Radar-Signature")
-        .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| AppError::Unauthorized("Missing signature".into()))?;
-
-    let timestamp = headers
-        .get("X-Radar-Timestamp")
-        .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| AppError::Unauthorized("Missing timestamp".into()))?;
-
-    // Verify HMAC
-    verify_hub_spoke(
-        &body,
-        signature,
-        timestamp,
-        &state.config.radar_webhook_secret,
-    )?;
-
-    // Parse payload
-    let payload: HubSpokePayload = serde_json::from_slice(&body)
-        .map_err(|e| AppError::BadRequest(format!("Invalid payload: {}", e)))?;
-
+/// Shared matching pipeline used by both hub_spoke_webhook and global_webhook.
+/// Given a group_id, message content, sender info, and group name,
+/// finds monitored groups, runs keyword filter, Gemini scoring, creates opportunities, and broadcasts.
+async fn process_message(
+    state: &AppState,
+    group_id: &str,
+    content: &str,
+    sender_name: Option<&str>,
+    sender_phone: Option<&str>,
+    group_name: Option<&str>,
+    timestamp: i64,
+    raw: Option<&serde_json::Value>,
+) -> Result<(), AppError> {
     // Skip empty messages
-    if payload.content.trim().is_empty() {
-        return Ok(StatusCode::OK);
+    if content.trim().is_empty() {
+        return Ok(());
     }
 
     // Find or create group for each user who monitors this WhatsApp group
     let groups = sqlx::query_as::<_, (Uuid, Uuid)>(
         "SELECT id, user_id FROM groups WHERE whatsapp_group_id = $1 AND is_monitored = true"
     )
-    .bind(&payload.group_id)
+    .bind(group_id)
     .fetch_all(&state.db)
     .await?;
 
     if groups.is_empty() {
-        return Ok(StatusCode::OK);
+        return Ok(());
     }
 
     // Save message (once per group record)
-    let whatsapp_ts = chrono::DateTime::from_timestamp(payload.timestamp, 0)
+    let whatsapp_ts = chrono::DateTime::from_timestamp(timestamp, 0)
         .unwrap_or_else(chrono::Utc::now);
 
     for (group_db_id, user_id) in &groups {
@@ -70,11 +55,11 @@ pub async fn hub_spoke_webhook(
         )
         .bind(message_id)
         .bind(group_db_id)
-        .bind(&payload.sender_name)
-        .bind(&payload.sender_phone)
-        .bind(&payload.content)
+        .bind(sender_name)
+        .bind(sender_phone)
+        .bind(content)
         .bind(whatsapp_ts)
-        .bind(&payload.raw)
+        .bind(raw)
         .execute(&state.db)
         .await?;
 
@@ -97,7 +82,7 @@ pub async fn hub_spoke_webhook(
         };
 
         // Fast keyword filter
-        if !fast_keyword_filter(&profile, &payload.content) {
+        if !fast_keyword_filter(&profile, content) {
             continue;
         }
 
@@ -111,10 +96,10 @@ pub async fn hub_spoke_webhook(
         let ws = state.ws_manager.clone();
         let evolution = state.evolution.clone();
         let config = state.config.clone();
-        let content = payload.content.clone();
-        let sender_name = payload.sender_name.clone().unwrap_or_default();
-        let sender_phone = payload.sender_phone.clone().unwrap_or_default();
-        let group_name = payload.group_name.clone().unwrap_or_default();
+        let content = content.to_string();
+        let sender_name_owned = sender_name.unwrap_or_default().to_string();
+        let sender_phone_owned = sender_phone.unwrap_or_default().to_string();
+        let group_name_owned = group_name.unwrap_or_default().to_string();
         let profile = profile.clone();
         let user_id = *user_id;
         let group_db_id = *group_db_id;
@@ -125,7 +110,7 @@ pub async fn hub_spoke_webhook(
             let sector = profile.sector.as_deref().unwrap_or("");
 
             match gemini
-                .score_opportunity(summary, &profile.keywords, sector, &content, &group_name, &sender_name)
+                .score_opportunity(summary, &profile.keywords, sector, &content, &group_name_owned, &sender_name_owned)
                 .await
             {
                 Ok(score_result) => {
@@ -144,8 +129,8 @@ pub async fn hub_spoke_webhook(
                            RETURNING id"#,
                     )
                     .bind(Uuid::new_v4())
-                    .bind(&sender_phone)
-                    .bind(&sender_name)
+                    .bind(&sender_phone_owned)
+                    .bind(&sender_name_owned)
                     .fetch_one(&db)
                     .await
                     .ok();
@@ -186,9 +171,9 @@ pub async fn hub_spoke_webhook(
                                 "suggested_reply": opp.suggested_reply,
                                 "is_demand": opp.is_demand,
                                 "is_offer": opp.is_offer,
-                                "group_name": group_name,
-                                "sender_name": sender_name,
-                                "sender_phone": sender_phone,
+                                "group_name": group_name_owned,
+                                "sender_name": sender_name_owned,
+                                "sender_phone": sender_phone_owned,
                                 "message_content": content,
                                 "created_at": opp.created_at,
                             }
@@ -217,9 +202,9 @@ pub async fn hub_spoke_webhook(
                                         alert_number,
                                         template,
                                         &opp,
-                                        &sender_name,
-                                        &sender_phone,
-                                        &group_name,
+                                        &sender_name_owned,
+                                        &sender_phone_owned,
+                                        &group_name_owned,
                                         &content,
                                         &config.frontend_url,
                                     )
@@ -242,6 +227,228 @@ pub async fn hub_spoke_webhook(
                 }
             }
         });
+    }
+
+    Ok(())
+}
+
+/// Hub&Spoke webhook endpoint (kept for external Node.js apps using HMAC)
+pub async fn hub_spoke_webhook(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Result<StatusCode, AppError> {
+    // Extract headers
+    let signature = headers
+        .get("X-Radar-Signature")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| AppError::Unauthorized("Missing signature".into()))?;
+
+    let timestamp = headers
+        .get("X-Radar-Timestamp")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| AppError::Unauthorized("Missing timestamp".into()))?;
+
+    // Verify HMAC
+    verify_hub_spoke(
+        &body,
+        signature,
+        timestamp,
+        &state.config.radar_webhook_secret,
+    )?;
+
+    // Parse payload
+    let payload: HubSpokePayload = serde_json::from_slice(&body)
+        .map_err(|e| AppError::BadRequest(format!("Invalid payload: {}", e)))?;
+
+    process_message(
+        &state,
+        &payload.group_id,
+        &payload.content,
+        payload.sender_name.as_deref(),
+        payload.sender_phone.as_deref(),
+        payload.group_name.as_deref(),
+        payload.timestamp,
+        payload.raw.as_ref(),
+    )
+    .await?;
+
+    Ok(StatusCode::OK)
+}
+
+/// Global webhook endpoint for Evolution API events.
+/// Evolution API sends ALL events to this single endpoint.
+/// No JWT auth — authenticated via `apikey` header matching EVOLUTION_API_KEY.
+pub async fn global_webhook(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Result<StatusCode, AppError> {
+    // Verify apikey header matches EVOLUTION_API_KEY
+    let provided_key = headers
+        .get("apikey")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    let expected_key = state
+        .config
+        .evolution_api_key
+        .as_deref()
+        .unwrap_or("");
+
+    if provided_key.is_empty() || provided_key != expected_key {
+        tracing::warn!("Global webhook: invalid or missing apikey");
+        return Err(AppError::Unauthorized("Invalid apikey".into()));
+    }
+
+    // Parse the Evolution API payload
+    let payload: serde_json::Value = serde_json::from_slice(&body)
+        .map_err(|e| AppError::BadRequest(format!("Invalid JSON payload: {}", e)))?;
+
+    let event = payload["event"].as_str().unwrap_or("");
+    let instance_name = payload["instance"].as_str().unwrap_or("");
+
+    if instance_name.is_empty() {
+        tracing::debug!("Global webhook: no instance name in payload");
+        return Ok(StatusCode::OK);
+    }
+
+    // Look up instance in DB to find the owning user
+    let user_row = sqlx::query_as::<_, (Uuid,)>(
+        "SELECT user_id FROM whatsapp_connections WHERE instance_name = $1"
+    )
+    .bind(instance_name)
+    .fetch_optional(&state.db)
+    .await?;
+
+    // If not found, this instance belongs to another app — return 200 silently
+    let user_id = match user_row {
+        Some((uid,)) => uid,
+        None => {
+            tracing::debug!("Global webhook: instance '{}' not registered in Radar", instance_name);
+            return Ok(StatusCode::OK);
+        }
+    };
+
+    match event {
+        "messages.upsert" => {
+            let data = &payload["data"];
+            let remote_jid = data["key"]["remoteJid"].as_str().unwrap_or("");
+
+            // Only process group messages
+            if !remote_jid.ends_with("@g.us") {
+                return Ok(StatusCode::OK);
+            }
+
+            // Extract message content
+            let content = data["message"]["conversation"]
+                .as_str()
+                .or_else(|| data["message"]["extendedTextMessage"]["text"].as_str())
+                .unwrap_or("");
+
+            if content.trim().is_empty() {
+                return Ok(StatusCode::OK);
+            }
+
+            // Extract sender: participant for groups, or remoteJid for direct
+            let sender_jid = data["key"]["participant"]
+                .as_str()
+                .or_else(|| data["key"]["remoteJid"].as_str())
+                .unwrap_or("");
+
+            // Extract phone number from JID (remove @s.whatsapp.net)
+            let sender_phone = sender_jid
+                .split('@')
+                .next()
+                .unwrap_or("");
+
+            let sender_name = data["pushName"].as_str().unwrap_or("");
+            let group_id = remote_jid;
+
+            let msg_timestamp = data["messageTimestamp"]
+                .as_i64()
+                .or_else(|| data["messageTimestamp"].as_str().and_then(|s| s.parse().ok()))
+                .unwrap_or_else(|| chrono::Utc::now().timestamp());
+
+            // Feed into the matching pipeline
+            process_message(
+                &state,
+                group_id,
+                content,
+                Some(sender_name),
+                Some(sender_phone),
+                None, // group_name not in Evolution API payload; will be looked up from DB
+                msg_timestamp,
+                Some(&payload),
+            )
+            .await?;
+        }
+
+        "connection.update" => {
+            let data = &payload["data"];
+            let state_str = data["state"].as_str()
+                .or_else(|| data["instance"]["state"].as_str())
+                .unwrap_or("");
+
+            let db_status = match state_str {
+                "open" => "connected",
+                "close" | "closed" => "disconnected",
+                "connecting" => "connecting",
+                _ => state_str,
+            };
+
+            sqlx::query(
+                "UPDATE whatsapp_connections SET status = $1, updated_at = NOW() WHERE user_id = $2"
+            )
+            .bind(db_status)
+            .bind(user_id)
+            .execute(&state.db)
+            .await?;
+
+            // Notify user via WebSocket
+            let ws_msg = serde_json::json!({
+                "type": "connection_update",
+                "data": {
+                    "status": db_status,
+                    "instance_name": instance_name,
+                }
+            });
+            state.ws_manager.broadcast_to_user(user_id, &ws_msg.to_string()).await;
+
+            tracing::info!("Global webhook: connection.update for instance '{}' -> {}", instance_name, db_status);
+        }
+
+        "qrcode.updated" => {
+            let data = &payload["data"];
+            // Extract QR base64 from various possible payload structures
+            let qr_base64 = data["qrcode"]["base64"].as_str()
+                .or_else(|| data["qrcode"].as_str())
+                .or_else(|| data["base64"].as_str())
+                .unwrap_or("");
+
+            if !qr_base64.is_empty() {
+                let qr_data = if qr_base64.starts_with("data:") {
+                    qr_base64.to_string()
+                } else {
+                    format!("data:image/png;base64,{}", qr_base64)
+                };
+
+                // Push QR code via WebSocket to the user
+                let ws_msg = serde_json::json!({
+                    "type": "qr_update",
+                    "data": {
+                        "qr_code": qr_data,
+                    }
+                });
+                state.ws_manager.broadcast_to_user(user_id, &ws_msg.to_string()).await;
+
+                tracing::info!("Global webhook: qrcode.updated for instance '{}'", instance_name);
+            }
+        }
+
+        _ => {
+            tracing::debug!("Global webhook: unhandled event '{}' for instance '{}'", event, instance_name);
+        }
     }
 
     Ok(StatusCode::OK)

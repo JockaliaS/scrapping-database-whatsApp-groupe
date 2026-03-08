@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateKeywords, updateProfile, connectWhatsApp, getWhatsAppQR, getWhatsAppStatus, getGroups, toggleGroup, connectExistingWhatsApp, listInstances } from '../services/api';
 import KeywordChips from '../components/KeywordChips';
+import useWebSocket from '../hooks/useWebSocket';
 
 const STEPS = [
   { num: 1, title: 'Qui etes-vous ?' },
@@ -13,6 +14,9 @@ const STEPS = [
 export default function Onboarding() {
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
+
+  // WebSocket for real-time QR and connection updates
+  const { qrCode: wsQrCode, whatsappStatus: wsWhatsappStatus } = useWebSocket();
 
   // Step 1
   const [rawText, setRawText] = useState('');
@@ -43,6 +47,22 @@ export default function Onboarding() {
 
   // Step 4
   const [groups, setGroups] = useState([]);
+
+  // Listen for WebSocket QR updates (from global webhook qrcode.updated events)
+  useEffect(() => {
+    if (wsQrCode && step === 3 && waPath === 'A') {
+      setQrCode(wsQrCode);
+    }
+  }, [wsQrCode, step, waPath]);
+
+  // Listen for WebSocket connection updates (from global webhook connection.update events)
+  useEffect(() => {
+    if (wsWhatsappStatus === 'connected' && step === 3) {
+      setWaStatus('connected');
+      setQrCode('');
+      clearInterval(qrIntervalRef.current);
+    }
+  }, [wsWhatsappStatus, step]);
 
   const handleAnalyze = async () => {
     if (!rawText.trim()) return;
@@ -101,7 +121,7 @@ export default function Onboarding() {
 
         setWaConnecting(false);
 
-        // Start polling QR
+        // Start polling QR as fallback (WebSocket qr_update is preferred)
         const poll = async () => {
           if (cancelled) return;
           try {
@@ -472,8 +492,40 @@ export default function Onboarding() {
                   Retour au choix
                 </button>
               </div>
+            ) : pathBSuccess ? (
+              /* Path B: Success state */
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 space-y-6">
+                <div className="text-center space-y-4">
+                  <div className="size-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                    <span className="material-symbols-outlined text-primary text-4xl">check_circle</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-900">
+                    Instance {existingInstanceName} verifiee et connectee a Radar.
+                  </h3>
+                  <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 text-left max-w-lg mx-auto">
+                    <p className="text-sm text-slate-600 mb-3">
+                      Si ce n'est pas deja fait, transmettez cette URL a votre administrateur Jockalia pour activation :
+                    </p>
+                    <code className="block bg-white rounded border border-slate-300 px-3 py-2 text-xs font-mono text-primary break-all">
+                      https://api.radar.jockaliaservices.fr/webhook/global
+                    </code>
+                    <p className="text-xs text-slate-400 mt-3">
+                      (Aucune action requise si vous utilisez deja un autre outil Jockalia Services)
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={() => setStep(4)}
+                    className="bg-primary text-white px-8 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                  >
+                    <span>Continuer</span>
+                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                  </button>
+                </div>
+              </div>
             ) : (
-              /* Path B: Existing instance */
+              /* Path B: Existing instance selection */
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 space-y-6">
                 <div>
                   <label className="mono-label text-xs font-bold text-slate-500 block mb-2">
