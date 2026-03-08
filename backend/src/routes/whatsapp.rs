@@ -1,8 +1,14 @@
 use axum::{extract::State, http::StatusCode, Json};
+use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::errors::AppError;
 use crate::AppState;
+
+#[derive(Deserialize)]
+pub struct ConnectExistingRequest {
+    pub instance_name: String,
+}
 
 pub async fn connect(
     State(state): State<AppState>,
@@ -44,6 +50,12 @@ pub async fn connect(
         .bind(&instance_name)
         .execute(&state.db)
         .await?;
+    }
+
+    // Set webhook
+    let webhook_url = "https://api.radar.jockaliaservices.fr/webhook/hub-spoke";
+    if let Err(e) = evolution.set_webhook(&instance_name, webhook_url).await {
+        tracing::warn!("Failed to set webhook for {}: {}", instance_name, e);
     }
 
     // Get QR code
@@ -164,6 +176,120 @@ pub async fn get_status(
             "connected_number": null
         }))),
     }
+}
+
+pub async fn connect_existing(
+    State(state): State<AppState>,
+    user_id: Uuid,
+    Json(payload): Json<ConnectExistingRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let evolution = match state.evolution.as_ref() {
+        Some(e) => e,
+        None => return Err(AppError::BadRequest("Evolution API not configured. Set it up in Admin settings.".into())),
+    };
+
+    let instance_name = payload.instance_name.trim().to_string();
+    if instance_name.is_empty() {
+        return Err(AppError::BadRequest("Instance name is required".into()));
+    }
+
+    // Verify instance exists
+    let instances = evolution.list_instances().await.map_err(|e| {
+        AppError::BadRequest(format!("Failed to list instances: {}", e))
+    })?;
+
+    let instance_exists = instances.iter().any(|inst| {
+        inst["instance"]["instanceName"].as_str() == Some(&instance_name)
+            || inst["instanceName"].as_str() == Some(&instance_name)
+            || inst["name"].as_str() == Some(&instance_name)
+    });
+
+    if !instance_exists {
+        return Err(AppError::BadRequest(format!(
+            "Instance '{}' not found in Evolution API",
+            instance_name
+        )));
+    }
+
+    // Check connection status
+    let status_str = match evolution.get_instance_status(&instance_name).await {
+        Ok(status) => {
+            let s = status["state"].as_str()
+                .or_else(|| status["instance"]["state"].as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            s
+        }
+        Err(_) => "unknown".to_string(),
+    };
+
+    // Configure webhook
+    let webhook_url = "https://api.radar.jockaliaservices.fr/webhook/hub-spoke";
+    if let Err(e) = evolution.set_webhook(&instance_name, webhook_url).await {
+        tracing::warn!("Failed to set webhook for {}: {}", instance_name, e);
+    }
+
+    // Save to whatsapp_connections
+    let db_status = if status_str == "open" { "connected" } else { "connecting" };
+
+    let updated = sqlx::query(
+        "UPDATE whatsapp_connections SET instance_name = $1, status = $2, updated_at = NOW() WHERE user_id = $3"
+    )
+    .bind(&instance_name)
+    .bind(db_status)
+    .bind(user_id)
+    .execute(&state.db)
+    .await?;
+
+    if updated.rows_affected() == 0 {
+        sqlx::query(
+            "INSERT INTO whatsapp_connections (id, user_id, instance_name, status) VALUES ($1, $2, $3, $4)"
+        )
+        .bind(Uuid::new_v4())
+        .bind(user_id)
+        .bind(&instance_name)
+        .bind(db_status)
+        .execute(&state.db)
+        .await?;
+    }
+
+    Ok(Json(serde_json::json!({
+        "status": db_status,
+        "instance_name": instance_name,
+        "webhook_url": webhook_url
+    })))
+}
+
+pub async fn list_evolution_instances(
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let evolution = match state.evolution.as_ref() {
+        Some(e) => e,
+        None => return Err(AppError::BadRequest("Evolution API not configured.".into())),
+    };
+
+    let instances = evolution.list_instances().await.map_err(|e| {
+        AppError::BadRequest(format!("Failed to list instances: {}", e))
+    })?;
+
+    // Extract useful info from each instance
+    let simplified: Vec<serde_json::Value> = instances.iter().map(|inst| {
+        let name = inst["instance"]["instanceName"].as_str()
+            .or_else(|| inst["instanceName"].as_str())
+            .or_else(|| inst["name"].as_str())
+            .unwrap_or("unknown");
+        let state_str = inst["instance"]["state"].as_str()
+            .or_else(|| inst["state"].as_str())
+            .unwrap_or("unknown");
+        serde_json::json!({
+            "instance_name": name,
+            "status": state_str
+        })
+    }).collect();
+
+    Ok(Json(serde_json::json!({
+        "instances": simplified
+    })))
 }
 
 pub async fn disconnect(

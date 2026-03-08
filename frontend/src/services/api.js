@@ -89,6 +89,9 @@ export const getWhatsAppQR = () => request('/api/whatsapp/qr');
 export const getWhatsAppStatus = () => request('/api/whatsapp/status');
 export const disconnectWhatsApp = () =>
   request('/api/whatsapp/disconnect', { method: 'DELETE' });
+export const connectExistingWhatsApp = (instance_name) =>
+  request('/api/whatsapp/connect-existing', { method: 'POST', body: JSON.stringify({ instance_name }) });
+export const listInstances = () => request('/api/whatsapp/instances');
 
 // Admin
 export const getAdminUsers = () => request('/api/admin/users');

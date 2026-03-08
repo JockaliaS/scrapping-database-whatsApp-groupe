@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateKeywords, updateProfile, connectWhatsApp, getWhatsAppQR, getWhatsAppStatus, getGroups, toggleGroup } from '../services/api';
+import { generateKeywords, updateProfile, connectWhatsApp, getWhatsAppQR, getWhatsAppStatus, getGroups, toggleGroup, connectExistingWhatsApp, listInstances } from '../services/api';
 import KeywordChips from '../components/KeywordChips';
 
 const STEPS = [
@@ -29,9 +29,17 @@ export default function Onboarding() {
   const [alertTemplate, setAlertTemplate] = useState('');
 
   // Step 3
+  const [waPath, setWaPath] = useState(null); // null = choice, 'A' = new instance, 'B' = existing
   const [qrCode, setQrCode] = useState('');
   const [waStatus, setWaStatus] = useState('disconnected');
   const qrIntervalRef = useRef(null);
+
+  // Path B
+  const [existingInstanceName, setExistingInstanceName] = useState('');
+  const [availableInstances, setAvailableInstances] = useState([]);
+  const [loadingInstances, setLoadingInstances] = useState(false);
+  const [connectingExisting, setConnectingExisting] = useState(false);
+  const [pathBSuccess, setPathBSuccess] = useState(false);
 
   // Step 4
   const [groups, setGroups] = useState([]);
@@ -60,9 +68,9 @@ export default function Onboarding() {
   const [waError, setWaError] = useState('');
   const [waConnecting, setWaConnecting] = useState(false);
 
-  // Step 3: Connect + Poll QR
+  // Step 3 Path A: Connect + Poll QR
   useEffect(() => {
-    if (step === 3) {
+    if (step === 3 && waPath === 'A') {
       let cancelled = false;
 
       const initWhatsApp = async () => {
@@ -126,7 +134,37 @@ export default function Onboarding() {
         clearInterval(qrIntervalRef.current);
       };
     }
-  }, [step]);
+  }, [step, waPath]);
+
+  // Step 3 Path B: Load available instances
+  useEffect(() => {
+    if (step === 3 && waPath === 'B') {
+      setLoadingInstances(true);
+      listInstances()
+        .then((data) => {
+          setAvailableInstances(data.instances || []);
+        })
+        .catch(() => {
+          setAvailableInstances([]);
+        })
+        .finally(() => setLoadingInstances(false));
+    }
+  }, [step, waPath]);
+
+  const handleConnectExisting = async () => {
+    if (!existingInstanceName.trim()) return;
+    setConnectingExisting(true);
+    setWaError('');
+    try {
+      const result = await connectExistingWhatsApp(existingInstanceName.trim());
+      setWaStatus(result.status);
+      setPathBSuccess(true);
+    } catch (err) {
+      setWaError(err.message || 'Erreur de connexion');
+    } finally {
+      setConnectingExisting(false);
+    }
+  };
 
   // Step 4: Load groups
   useEffect(() => {
@@ -332,64 +370,196 @@ export default function Onboarding() {
           <>
             <div className="space-y-4 mb-10">
               <h2 className="text-4xl font-extrabold tracking-tight text-slate-900">Etape 3 — Connexion WhatsApp</h2>
-              <p className="text-lg text-slate-600 max-w-2xl">Scannez le QR code avec votre application WhatsApp pour connecter votre compte.</p>
+              <p className="text-lg text-slate-600 max-w-2xl">Connectez votre WhatsApp pour que Radar puisse surveiller vos groupes.</p>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 flex flex-col items-center">
-              {waStatus === 'connected' ? (
+            {/* Connected state - shown for both paths */}
+            {waStatus === 'connected' ? (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 flex flex-col items-center">
                 <div className="text-center space-y-4">
                   <div className="size-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
                     <span className="material-symbols-outlined text-primary text-4xl">check_circle</span>
                   </div>
-                  <h3 className="text-2xl font-bold text-slate-900">WhatsApp connecte !</h3>
+                  <h3 className="text-2xl font-bold text-slate-900">
+                    {pathBSuccess ? `Instance ${existingInstanceName} connectee a Radar` : 'WhatsApp connecte !'}
+                  </h3>
                   <p className="text-slate-500">Votre compte est pret pour la surveillance.</p>
                 </div>
-              ) : waError ? (
-                <div className="text-center space-y-4 py-8">
-                  <div className="size-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto">
-                    <span className="material-symbols-outlined text-amber-500 text-4xl">warning</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900">Configuration requise</h3>
-                  <p className="text-slate-500 max-w-md">{waError}</p>
+              </div>
+            ) : !waPath ? (
+              /* Path choice */
+              <div className="space-y-6">
+                <p className="text-base text-slate-600 font-medium">Utilisez-vous deja un outil Jockalia Services avec WhatsApp ?</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
-                    onClick={() => { setWaError(''); setStep(3); }}
-                    className="text-primary font-bold text-sm hover:underline"
+                    onClick={() => setWaPath('A')}
+                    className="bg-white rounded-xl border-2 border-slate-200 hover:border-primary p-6 text-left transition-all hover:shadow-md group"
                   >
-                    Reessayer
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="size-10 bg-slate-100 group-hover:bg-primary/10 rounded-lg flex items-center justify-center transition-colors">
+                        <span className="material-symbols-outlined text-slate-500 group-hover:text-primary">qr_code_2</span>
+                      </div>
+                      <h3 className="font-bold text-slate-800">Non, je n'ai pas de WhatsApp Jockalia</h3>
+                    </div>
+                    <p className="text-sm text-slate-500">Creer une nouvelle instance WhatsApp et scanner un QR code pour la connecter.</p>
                   </button>
-                  <p className="text-xs text-slate-400 mt-4">
-                    Vous pouvez passer cette etape et configurer WhatsApp plus tard dans les parametres.
+                  <button
+                    onClick={() => setWaPath('B')}
+                    className="bg-white rounded-xl border-2 border-slate-200 hover:border-primary p-6 text-left transition-all hover:shadow-md group"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="size-10 bg-slate-100 group-hover:bg-primary/10 rounded-lg flex items-center justify-center transition-colors">
+                        <span className="material-symbols-outlined text-slate-500 group-hover:text-primary">link</span>
+                      </div>
+                      <h3 className="font-bold text-slate-800">Oui, j'utilise deja un outil Jockalia</h3>
+                    </div>
+                    <p className="text-sm text-slate-500">Connecter une instance Evolution API existante a Radar.</p>
+                  </button>
+                </div>
+              </div>
+            ) : waPath === 'A' ? (
+              /* Path A: New instance + QR */
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 flex flex-col items-center">
+                {waError ? (
+                  <div className="text-center space-y-4 py-8">
+                    <div className="size-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto">
+                      <span className="material-symbols-outlined text-amber-500 text-4xl">warning</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900">Configuration requise</h3>
+                    <p className="text-slate-500 max-w-md">{waError}</p>
+                    <button
+                      onClick={() => { setWaError(''); setWaPath('A'); }}
+                      className="text-primary font-bold text-sm hover:underline"
+                    >
+                      Reessayer
+                    </button>
+                    <p className="text-xs text-slate-400 mt-4">
+                      Vous pouvez passer cette etape et configurer WhatsApp plus tard dans les parametres.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="size-64 bg-slate-100 rounded-xl flex items-center justify-center mb-6 border border-slate-200">
+                      {qrCode ? (
+                        typeof qrCode === 'string' && qrCode.startsWith('data:') ? (
+                          <img src={qrCode} alt="QR Code WhatsApp" className="w-56 h-56 object-contain" />
+                        ) : (
+                          <div className="text-center p-4">
+                            <span className="material-symbols-outlined text-primary text-5xl mb-2 block">qr_code_2</span>
+                            <p className="text-xs text-slate-500 font-mono break-all">{String(qrCode).substring(0, 50)}...</p>
+                            <p className="text-sm text-slate-600 mt-2">Scannez avec WhatsApp</p>
+                          </div>
+                        )
+                      ) : waConnecting ? (
+                        <div className="text-center text-slate-400">
+                          <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                          <p className="text-sm">Connexion en cours...</p>
+                        </div>
+                      ) : (
+                        <div className="text-center text-slate-400">
+                          <span className="material-symbols-outlined text-5xl mb-2 block">qr_code_2</span>
+                          <p className="text-sm">Chargement du QR code...</p>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-500">Scannez ce QR code avec WhatsApp pour connecter votre compte</p>
+                  </>
+                )}
+                <button
+                  onClick={() => { setWaPath(null); setQrCode(''); setWaError(''); clearInterval(qrIntervalRef.current); }}
+                  className="mt-6 text-slate-400 text-sm hover:text-slate-600 transition-colors"
+                >
+                  Retour au choix
+                </button>
+              </div>
+            ) : (
+              /* Path B: Existing instance */
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 space-y-6">
+                <div>
+                  <label className="mono-label text-xs font-bold text-slate-500 block mb-2">
+                    Nom de votre instance Evolution API
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full p-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-slate-700 bg-slate-50/50 font-mono"
+                    placeholder="ex: mon-instance-whatsapp"
+                    value={existingInstanceName}
+                    onChange={(e) => setExistingInstanceName(e.target.value)}
+                  />
+                  <p className="text-xs text-slate-400 mt-2">
+                    Vous trouverez le nom de votre instance dans les parametres de votre autre application Jockalia Services.
                   </p>
                 </div>
-              ) : (
-                <>
-                  <div className="size-64 bg-slate-100 rounded-xl flex items-center justify-center mb-6 border border-slate-200">
-                    {qrCode ? (
-                      typeof qrCode === 'string' && qrCode.startsWith('data:') ? (
-                        <img src={qrCode} alt="QR Code WhatsApp" className="w-56 h-56 object-contain" />
-                      ) : (
-                        <div className="text-center p-4">
-                          <span className="material-symbols-outlined text-primary text-5xl mb-2 block">qr_code_2</span>
-                          <p className="text-xs text-slate-500 font-mono break-all">{String(qrCode).substring(0, 50)}...</p>
-                          <p className="text-sm text-slate-600 mt-2">Scannez avec WhatsApp</p>
-                        </div>
-                      )
-                    ) : waConnecting ? (
-                      <div className="text-center text-slate-400">
-                        <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-                        <p className="text-sm">Connexion en cours...</p>
-                      </div>
-                    ) : (
-                      <div className="text-center text-slate-400">
-                        <span className="material-symbols-outlined text-5xl mb-2 block">qr_code_2</span>
-                        <p className="text-sm">Chargement du QR code...</p>
-                      </div>
-                    )}
+
+                {/* Available instances list */}
+                <div>
+                  <h4 className="mono-label text-xs font-bold text-slate-500 mb-3">Instances disponibles</h4>
+                  {loadingInstances ? (
+                    <div className="flex items-center gap-2 text-slate-400 text-sm py-4">
+                      <div className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                      Chargement des instances...
+                    </div>
+                  ) : availableInstances.length === 0 ? (
+                    <p className="text-sm text-slate-400 py-4">Aucune instance trouvee.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {availableInstances.map((inst) => (
+                        <button
+                          key={inst.instance_name}
+                          onClick={() => setExistingInstanceName(inst.instance_name)}
+                          className={`w-full text-left p-3 rounded-lg border transition-all flex items-center justify-between ${
+                            existingInstanceName === inst.instance_name
+                              ? 'border-primary bg-primary/5'
+                              : 'border-slate-100 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className="font-mono text-sm text-slate-700">{inst.instance_name}</span>
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            inst.status === 'open'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            {inst.status === 'open' ? 'Connecte' : inst.status}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {waError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                    {waError}
                   </div>
-                  <p className="text-sm text-slate-500">Scannez ce QR code avec WhatsApp pour connecter votre compte</p>
-                </>
-              )}
-            </div>
+                )}
+
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    onClick={() => { setWaPath(null); setWaError(''); setExistingInstanceName(''); }}
+                    className="text-slate-400 text-sm hover:text-slate-600 transition-colors"
+                  >
+                    Retour au choix
+                  </button>
+                  <button
+                    onClick={handleConnectExisting}
+                    disabled={!existingInstanceName.trim() || connectingExisting}
+                    className="bg-primary text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50"
+                  >
+                    {connectingExisting ? (
+                      <>
+                        <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Connexion...
+                      </>
+                    ) : (
+                      <>
+                        <span>Connecter cette instance</span>
+                        <span className="material-symbols-outlined text-lg">link</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
 
