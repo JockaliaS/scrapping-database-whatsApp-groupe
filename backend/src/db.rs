@@ -39,19 +39,9 @@ pub async fn run_migrations(pool: &PgPool) {
     tracing::info!("Database migrations applied");
 }
 
-/// Seed default admin user if no users exist in the database.
-/// Called once at application startup — idempotent.
+/// Ensure admin user exists and password is up to date.
+/// Called at application startup — idempotent.
 pub async fn seed_admin(pool: &PgPool, config: &Config) {
-    let count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users")
-        .fetch_one(pool)
-        .await
-        .unwrap_or(0);
-
-    if count > 0 {
-        tracing::info!("Users already exist, skipping admin seed");
-        return;
-    }
-
     let salt = SaltString::generate(&mut OsRng);
     let password_hash = match Argon2::default()
         .hash_password(config.admin_password.as_bytes(), &salt)
@@ -63,8 +53,25 @@ pub async fn seed_admin(pool: &PgPool, config: &Config) {
         }
     };
 
+    // Try to update existing admin first
+    let updated = sqlx::query(
+        "UPDATE users SET password_hash = $1, role = 'admin' WHERE email = $2",
+    )
+    .bind(&password_hash)
+    .bind(&config.admin_email)
+    .execute(pool)
+    .await;
+
+    match updated {
+        Ok(result) if result.rows_affected() > 0 => {
+            tracing::info!("Admin password updated for {}", config.admin_email);
+            return;
+        }
+        _ => {}
+    }
+
+    // Admin doesn't exist, create it
     let user_id = Uuid::new_v4();
-    let profile_id = Uuid::new_v4();
 
     let result = sqlx::query(
         r#"INSERT INTO users (id, email, password_hash, full_name, role)
@@ -78,22 +85,18 @@ pub async fn seed_admin(pool: &PgPool, config: &Config) {
 
     match result {
         Ok(_) => {
-            // Create profile for admin
             let _ = sqlx::query(
                 "INSERT INTO profiles (id, user_id) VALUES ($1, $2)",
             )
-            .bind(profile_id)
+            .bind(Uuid::new_v4())
             .bind(user_id)
             .execute(pool)
             .await;
 
-            tracing::info!(
-                "Default admin created: {} (change password after first login!)",
-                config.admin_email
-            );
+            tracing::info!("Admin created: {}", config.admin_email);
         }
         Err(e) => {
-            tracing::error!("Failed to create admin user: {}", e);
+            tracing::error!("Failed to create admin: {}", e);
         }
     }
 }
