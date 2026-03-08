@@ -80,7 +80,7 @@ Respond entirely in French."#
 
     async fn call_gemini<T: serde::de::DeserializeOwned>(&self, prompt: &str) -> anyhow::Result<T> {
         let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={}",
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={}",
             self.api_key
         );
 
