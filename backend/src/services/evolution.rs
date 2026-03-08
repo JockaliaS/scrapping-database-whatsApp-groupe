@@ -16,9 +16,26 @@ impl EvolutionService {
         }
     }
 
+    /// Check HTTP status and return a clear error if not 2xx
+    async fn check_response(&self, resp: reqwest::Response) -> anyhow::Result<Value> {
+        let status = resp.status();
+        let body: Value = resp.json().await.unwrap_or_else(|_| json!({"error": "empty response"}));
+
+        if !status.is_success() {
+            let msg = body["response"]["message"]
+                .as_str()
+                .or_else(|| body["error"].as_str())
+                .or_else(|| body["message"].as_str())
+                .unwrap_or("Unknown error");
+            anyhow::bail!("Evolution API {} {}: {}", status.as_u16(), status.canonical_reason().unwrap_or(""), msg);
+        }
+
+        Ok(body)
+    }
+
     pub async fn send_message(&self, instance: &str, to: &str, text: &str) -> anyhow::Result<()> {
         let url = format!("{}/message/sendText/{}", self.base_url, instance);
-        self.client
+        let resp = self.client
             .post(&url)
             .header("apikey", &self.api_key)
             .json(&json!({
@@ -27,6 +44,7 @@ impl EvolutionService {
             }))
             .send()
             .await?;
+        self.check_response(resp).await?;
         Ok(())
     }
 
@@ -37,13 +55,12 @@ impl EvolutionService {
             .header("apikey", &self.api_key)
             .json(&json!({
                 "instanceName": instance_name,
+                "qrcode": true,
                 "integration": "WHATSAPP-BAILEYS"
             }))
             .send()
-            .await?
-            .json::<Value>()
             .await?;
-        Ok(resp)
+        self.check_response(resp).await
     }
 
     pub async fn get_qr_code(&self, instance_name: &str) -> anyhow::Result<Value> {
@@ -52,10 +69,8 @@ impl EvolutionService {
             .get(&url)
             .header("apikey", &self.api_key)
             .send()
-            .await?
-            .json::<Value>()
             .await?;
-        Ok(resp)
+        self.check_response(resp).await
     }
 
     pub async fn get_instance_status(&self, instance_name: &str) -> anyhow::Result<Value> {
@@ -67,10 +82,8 @@ impl EvolutionService {
             .get(&url)
             .header("apikey", &self.api_key)
             .send()
-            .await?
-            .json::<Value>()
             .await?;
-        Ok(resp)
+        self.check_response(resp).await
     }
 
     pub async fn get_groups(&self, instance_name: &str) -> anyhow::Result<Vec<Value>> {
@@ -79,10 +92,13 @@ impl EvolutionService {
             .get(&url)
             .header("apikey", &self.api_key)
             .send()
-            .await?
-            .json::<Vec<Value>>()
             .await?;
-        Ok(resp)
+        let status = resp.status();
+        let body: Vec<Value> = resp.json().await.unwrap_or_default();
+        if !status.is_success() {
+            anyhow::bail!("Evolution API {}: failed to fetch groups", status.as_u16());
+        }
+        Ok(body)
     }
 
     pub async fn delete_instance(&self, instance_name: &str) -> anyhow::Result<()> {

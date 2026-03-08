@@ -15,11 +15,16 @@ pub async fn connect(
 
     let instance_name = format!("radar-{}", user_id.to_string().split('-').next().unwrap_or("user"));
 
-    // Create instance
-    evolution
-        .create_instance(&instance_name)
-        .await
-        .map_err(|e| AppError::Internal(format!("Evolution API error: {}", e)))?;
+    // Create instance (ignore "already exists" errors)
+    let create_result = evolution.create_instance(&instance_name).await;
+    if let Err(ref e) = create_result {
+        let err_str = e.to_string();
+        // Only fail if it's NOT an "already exists" error
+        if !err_str.contains("already exists") && !err_str.contains("already created") {
+            tracing::error!("Evolution create_instance error: {}", err_str);
+            return Err(AppError::BadRequest(format!("Evolution API: {}", err_str)));
+        }
+    }
 
     // Save connection — try update first, then insert
     let updated = sqlx::query(
@@ -42,16 +47,20 @@ pub async fn connect(
     }
 
     // Get QR code
-    let qr = evolution
-        .get_qr_code(&instance_name)
-        .await
-        .map_err(|e| AppError::Internal(format!("QR code error: {}", e)))?;
-
-    Ok(Json(serde_json::json!({
-        "instance_name": instance_name,
-        "qr_code": qr.get("base64").or(qr.get("code")),
-        "status": "connecting"
-    })))
+    match evolution.get_qr_code(&instance_name).await {
+        Ok(qr) => {
+            let qr_code = qr.get("base64").or(qr.get("code")).cloned();
+            Ok(Json(serde_json::json!({
+                "instance_name": instance_name,
+                "qr_code": qr_code,
+                "status": "connecting"
+            })))
+        }
+        Err(e) => {
+            tracing::error!("Evolution get_qr_code error: {}", e);
+            Err(AppError::BadRequest(format!("Evolution API: {}", e)))
+        }
+    }
 }
 
 pub async fn get_qr(
@@ -80,16 +89,12 @@ pub async fn get_qr(
         }))),
     };
 
-    let qr = evolution
-        .get_qr_code(&conn.0)
-        .await
-        .map_err(|e| AppError::Internal(format!("QR code error: {}", e)))?;
-
-    // Check if connected
+    // Check if connected first
     if let Ok(status) = evolution.get_instance_status(&conn.0).await {
-        let state_str = status["state"].as_str().unwrap_or("unknown");
+        let state_str = status["state"].as_str()
+            .or_else(|| status["instance"]["state"].as_str())
+            .unwrap_or("unknown");
         if state_str == "open" {
-            // Update connection status
             let _ = sqlx::query(
                 "UPDATE whatsapp_connections SET status = 'connected', updated_at = NOW() WHERE user_id = $1"
             )
@@ -104,10 +109,24 @@ pub async fn get_qr(
         }
     }
 
-    Ok(Json(serde_json::json!({
-        "status": conn.1,
-        "qr_code": qr.get("base64").or(qr.get("code"))
-    })))
+    // Get QR code
+    match evolution.get_qr_code(&conn.0).await {
+        Ok(qr) => {
+            let qr_code = qr.get("base64").or(qr.get("code")).cloned();
+            Ok(Json(serde_json::json!({
+                "status": if qr_code.is_some() { "connecting" } else { &conn.1 },
+                "qr_code": qr_code,
+            })))
+        }
+        Err(e) => {
+            tracing::warn!("QR code fetch error: {}", e);
+            Ok(Json(serde_json::json!({
+                "status": "error",
+                "qr_code": null,
+                "error": e.to_string()
+            })))
+        }
+    }
 }
 
 pub async fn get_status(
