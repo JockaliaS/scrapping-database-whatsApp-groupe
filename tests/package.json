@@ -1,0 +1,14 @@
+{
+  "name": "radar-api-tests",
+  "version": "1.0.0",
+  "description": "Comprehensive API test suite for Radar backend",
+  "main": "api-tests.js",
+  "scripts": {
+    "test": "node api-tests.js",
+    "test:visual": "npx playwright test"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "@playwright/test": "^1.49.0"
+  }
+}
