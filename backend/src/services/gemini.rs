@@ -109,10 +109,22 @@ Respond entirely in French."#
                         continue;
                     }
 
+                    let status = response.status();
                     let resp_body: Value = response.json().await?;
+
+                    if !status.is_success() {
+                        let err_msg = resp_body["error"]["message"].as_str().unwrap_or("Unknown Gemini error");
+                        tracing::error!("Gemini API error {}: {}", status, err_msg);
+                        last_error = Some(anyhow::anyhow!("Gemini API error {}: {}", status, err_msg));
+                        continue;
+                    }
+
                     let text = resp_body["candidates"][0]["content"]["parts"][0]["text"]
                         .as_str()
-                        .ok_or_else(|| anyhow::anyhow!("No text in Gemini response"))?;
+                        .ok_or_else(|| {
+                            tracing::error!("No text in Gemini response: {}", serde_json::to_string_pretty(&resp_body).unwrap_or_default());
+                            anyhow::anyhow!("No text in Gemini response")
+                        })?;
 
                     // Strip markdown fences if present
                     let cleaned = text
