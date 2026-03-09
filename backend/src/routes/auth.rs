@@ -21,13 +21,17 @@ pub async fn login(
     State(state): State<AppState>,
     Json(req): Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, AppError> {
+    tracing::info!("[Auth] login attempt email={}", req.email);
     let user = sqlx::query_as::<_, User>(
         "SELECT * FROM users WHERE email = $1 AND is_active = true"
     )
     .bind(&req.email)
     .fetch_optional(&state.db)
     .await?
-    .ok_or_else(|| AppError::Unauthorized("Invalid credentials".into()))?;
+    .ok_or_else(|| {
+        tracing::warn!("[Auth] login FAILED: email={} not found or inactive", req.email);
+        AppError::Unauthorized("Invalid credentials".into())
+    })?;
 
     let parsed_hash = PasswordHash::new(&user.password_hash)
         .map_err(|_| AppError::Internal("Invalid password hash".into()))?;
@@ -37,6 +41,7 @@ pub async fn login(
 
     let token = create_token(&user, &state.config.jwt_secret, state.config.jwt_expire_minutes)?;
 
+    tracing::info!("[Auth] login OK user_id={} email={}", user.id, user.email);
     Ok(Json(AuthResponse {
         token,
         user: UserPublic::from(user),
@@ -47,6 +52,7 @@ pub async fn register(
     State(state): State<AppState>,
     Json(req): Json<RegisterRequest>,
 ) -> Result<(StatusCode, Json<AuthResponse>), AppError> {
+    tracing::info!("[Auth] register attempt email={} name={:?}", req.email, req.full_name);
     // Check if email already exists
     let existing = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE email = $1")
         .bind(&req.email)

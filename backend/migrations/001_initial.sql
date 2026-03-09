@@ -112,6 +112,9 @@ CREATE TABLE hub_spoke_tokens (
   last_used TIMESTAMPTZ
 );
 
+-- Add webhook_url to whatsapp_connections
+ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS webhook_url VARCHAR(500);
+
 -- Indexes
 CREATE INDEX idx_messages_group_id ON messages(group_id);
 CREATE INDEX idx_messages_created_at ON messages(created_at DESC);

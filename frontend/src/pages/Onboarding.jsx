@@ -44,6 +44,8 @@ export default function Onboarding() {
   const [loadingInstances, setLoadingInstances] = useState(false);
   const [connectingExisting, setConnectingExisting] = useState(false);
   const [pathBSuccess, setPathBSuccess] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookUrlCopied, setWebhookUrlCopied] = useState(false);
 
   // Step 4
   const [groups, setGroups] = useState([]);
@@ -178,6 +180,7 @@ export default function Onboarding() {
     try {
       const result = await connectExistingWhatsApp(existingInstanceName.trim());
       setWaStatus(result.status);
+      setWebhookUrl(result.webhook_url || '');
       setPathBSuccess(true);
     } catch (err) {
       setWaError(err.message || 'Erreur de connexion');
@@ -493,33 +496,57 @@ export default function Onboarding() {
                 </button>
               </div>
             ) : pathBSuccess ? (
-              /* Path B: Success state */
+              /* Path B: Success state — MUST show webhook URL before continuing */
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 space-y-6">
                 <div className="text-center space-y-4">
-                  <div className="size-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                    <span className="material-symbols-outlined text-primary text-4xl">check_circle</span>
+                  <div className="size-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                    <span className="material-symbols-outlined text-green-600 text-4xl">check_circle</span>
                   </div>
                   <h3 className="text-2xl font-bold text-slate-900">
                     Instance {existingInstanceName} verifiee et connectee a Radar.
                   </h3>
-                  <div className="bg-slate-50 rounded-lg border border-slate-200 p-4 text-left max-w-lg mx-auto">
-                    <p className="text-sm text-slate-600 mb-3">
-                      Si ce n'est pas deja fait, transmettez cette URL a votre administrateur Jockalia pour activation :
-                    </p>
-                    <code className="block bg-white rounded border border-slate-300 px-3 py-2 text-xs font-mono text-primary break-all">
-                      https://api.radar.jockaliaservices.fr/webhook/global
-                    </code>
-                    <p className="text-xs text-slate-400 mt-3">
-                      (Aucune action requise si vous utilisez deja un autre outil Jockalia Services)
-                    </p>
-                  </div>
                 </div>
+
+                {/* Webhook URL — prominent amber box */}
+                <div className="bg-amber-50 rounded-xl border-2 border-amber-300 p-6 space-y-4 max-w-lg mx-auto">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-amber-600 text-xl">warning</span>
+                    <h4 className="font-bold text-amber-800 text-base">URL a transmettre a votre administrateur Jockalia</h4>
+                  </div>
+                  <p className="text-sm text-amber-700">
+                    Cette URL doit etre configuree dans Evolution API sur votre instance <strong>{existingInstanceName}</strong> pour que Radar puisse recevoir vos messages de groupe.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 bg-white rounded-lg border-2 border-amber-200 px-4 py-3 text-sm font-mono text-slate-800 break-all select-all">
+                      {webhookUrl}
+                    </code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(webhookUrl);
+                        setWebhookUrlCopied(true);
+                        setTimeout(() => setWebhookUrlCopied(false), 3000);
+                      }}
+                      className={`shrink-0 px-4 py-3 rounded-lg font-bold text-sm flex items-center gap-1 transition-all ${
+                        webhookUrlCopied
+                          ? 'bg-green-100 text-green-700 border border-green-300'
+                          : 'bg-amber-200 text-amber-800 hover:bg-amber-300 border border-amber-300'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-base">{webhookUrlCopied ? 'done' : 'content_copy'}</span>
+                      {webhookUrlCopied ? 'Copie !' : 'Copier'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-amber-600">
+                    Si vous utilisez deja un autre outil Jockalia Services, cette URL est peut-etre deja active.
+                  </p>
+                </div>
+
                 <div className="flex justify-center pt-2">
                   <button
                     onClick={() => setStep(4)}
                     className="bg-primary text-white px-8 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
                   >
-                    <span>Continuer</span>
+                    <span>J'ai transmis l'URL, continuer</span>
                     <span className="material-symbols-outlined text-lg">arrow_forward</span>
                   </button>
                 </div>

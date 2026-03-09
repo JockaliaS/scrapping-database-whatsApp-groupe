@@ -1,6 +1,6 @@
 use axum::{
     body::Bytes,
-    extract::State,
+    extract::{Path, State},
     http::{HeaderMap, StatusCode},
 };
 use uuid::Uuid;
@@ -12,7 +12,7 @@ use crate::services::hub_spoke::verify_hub_spoke;
 use crate::services::matching::fast_keyword_filter;
 use crate::AppState;
 
-/// Shared matching pipeline used by both hub_spoke_webhook and global_webhook.
+/// Shared matching pipeline used by both hub_spoke_webhook and per-user webhook.
 /// Given a group_id, message content, sender info, and group name,
 /// finds monitored groups, runs keyword filter, Gemini scoring, creates opportunities, and broadcasts.
 async fn process_message(
@@ -223,7 +223,7 @@ async fn process_message(
                     }
                 }
                 Err(e) => {
-                    tracing::error!("Gemini scoring error: {}", e);
+                    tracing::error!("[Webhook] Gemini scoring error: {}", e);
                 }
             }
         });
@@ -238,6 +238,8 @@ pub async fn hub_spoke_webhook(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<StatusCode, AppError> {
+    tracing::info!("[Webhook] hub_spoke_webhook called");
+
     // Extract headers
     let signature = headers
         .get("X-Radar-Signature")
@@ -261,6 +263,8 @@ pub async fn hub_spoke_webhook(
     let payload: HubSpokePayload = serde_json::from_slice(&body)
         .map_err(|e| AppError::BadRequest(format!("Invalid payload: {}", e)))?;
 
+    tracing::info!("[Webhook] hub_spoke: group={} content_len={}", payload.group_id, payload.content.len());
+
     process_message(
         &state,
         &payload.group_id,
@@ -276,14 +280,18 @@ pub async fn hub_spoke_webhook(
     Ok(StatusCode::OK)
 }
 
-/// Global webhook endpoint for Evolution API events.
-/// Evolution API sends ALL events to this single endpoint.
-/// No JWT auth — authenticated via `apikey` header matching EVOLUTION_API_KEY.
-pub async fn global_webhook(
+/// Per-user webhook endpoint for Evolution API events.
+/// URL: POST /webhook/whatsapp/{user_id}
+/// Auth: apikey header must match EVOLUTION_API_KEY.
+/// Each user gets their own webhook URL for their Evolution API instance.
+pub async fn per_user_webhook(
     State(state): State<AppState>,
+    Path(user_id): Path<Uuid>,
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<StatusCode, AppError> {
+    tracing::info!("[Webhook] per_user_webhook called for user_id={}", user_id);
+
     // Verify apikey header matches EVOLUTION_API_KEY
     let provided_key = headers
         .get("apikey")
@@ -297,46 +305,58 @@ pub async fn global_webhook(
         .unwrap_or("");
 
     if provided_key.is_empty() || provided_key != expected_key {
-        tracing::warn!("Global webhook: invalid or missing apikey");
+        tracing::warn!("[Webhook] per_user user_id={}: invalid or missing apikey (got '{}')", user_id, if provided_key.is_empty() { "<empty>" } else { "<redacted>" });
         return Err(AppError::Unauthorized("Invalid apikey".into()));
+    }
+
+    // Verify user_id exists in whatsapp_connections
+    let conn_exists = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM whatsapp_connections WHERE user_id = $1"
+    )
+    .bind(user_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+
+    if conn_exists == 0 {
+        tracing::warn!("[Webhook] per_user: user_id={} has no whatsapp_connection", user_id);
+        return Ok(StatusCode::OK); // Return 200 silently — don't break Evolution API
     }
 
     // Parse the Evolution API payload
     let payload: serde_json::Value = serde_json::from_slice(&body)
-        .map_err(|e| AppError::BadRequest(format!("Invalid JSON payload: {}", e)))?;
+        .map_err(|e| {
+            tracing::error!("[Webhook] per_user user_id={}: invalid JSON: {}", user_id, e);
+            AppError::BadRequest(format!("Invalid JSON payload: {}", e))
+        })?;
 
     let event = payload["event"].as_str().unwrap_or("");
     let instance_name = payload["instance"].as_str().unwrap_or("");
 
-    if instance_name.is_empty() {
-        tracing::debug!("Global webhook: no instance name in payload");
-        return Ok(StatusCode::OK);
-    }
+    tracing::info!("[Webhook] per_user user_id={} event={} instance={}", user_id, event, instance_name);
 
-    // Look up instance in DB to find the owning user
-    let user_row = sqlx::query_as::<_, (Uuid,)>(
-        "SELECT user_id FROM whatsapp_connections WHERE instance_name = $1"
-    )
-    .bind(instance_name)
-    .fetch_optional(&state.db)
-    .await?;
+    handle_evolution_event(&state, user_id, event, instance_name, &payload).await
+}
 
-    // If not found, this instance belongs to another app — return 200 silently
-    let user_id = match user_row {
-        Some((uid,)) => uid,
-        None => {
-            tracing::debug!("Global webhook: instance '{}' not registered in Radar", instance_name);
-            return Ok(StatusCode::OK);
-        }
-    };
 
+/// Shared handler for Evolution API events (used by both global and per-user webhooks)
+async fn handle_evolution_event(
+    state: &AppState,
+    user_id: Uuid,
+    event: &str,
+    instance_name: &str,
+    payload: &serde_json::Value,
+) -> Result<StatusCode, AppError> {
     match event {
         "messages.upsert" => {
             let data = &payload["data"];
             let remote_jid = data["key"]["remoteJid"].as_str().unwrap_or("");
 
+            tracing::info!("[Webhook] messages.upsert user_id={} instance={} remoteJid={}", user_id, instance_name, remote_jid);
+
             // Only process group messages
             if !remote_jid.ends_with("@g.us") {
+                tracing::debug!("[Webhook] messages.upsert: skipping non-group message (jid={})", remote_jid);
                 return Ok(StatusCode::OK);
             }
 
@@ -347,21 +367,17 @@ pub async fn global_webhook(
                 .unwrap_or("");
 
             if content.trim().is_empty() {
+                tracing::debug!("[Webhook] messages.upsert: empty content, skipping");
                 return Ok(StatusCode::OK);
             }
 
-            // Extract sender: participant for groups, or remoteJid for direct
+            // Extract sender
             let sender_jid = data["key"]["participant"]
                 .as_str()
                 .or_else(|| data["key"]["remoteJid"].as_str())
                 .unwrap_or("");
 
-            // Extract phone number from JID (remove @s.whatsapp.net)
-            let sender_phone = sender_jid
-                .split('@')
-                .next()
-                .unwrap_or("");
-
+            let sender_phone = sender_jid.split('@').next().unwrap_or("");
             let sender_name = data["pushName"].as_str().unwrap_or("");
             let group_id = remote_jid;
 
@@ -370,16 +386,17 @@ pub async fn global_webhook(
                 .or_else(|| data["messageTimestamp"].as_str().and_then(|s| s.parse().ok()))
                 .unwrap_or_else(|| chrono::Utc::now().timestamp());
 
-            // Feed into the matching pipeline
+            tracing::info!("[Webhook] messages.upsert: processing group={} sender={} content_len={}", group_id, sender_name, content.len());
+
             process_message(
-                &state,
+                state,
                 group_id,
                 content,
                 Some(sender_name),
                 Some(sender_phone),
-                None, // group_name not in Evolution API payload; will be looked up from DB
+                None,
                 msg_timestamp,
-                Some(&payload),
+                Some(payload),
             )
             .await?;
         }
@@ -396,6 +413,8 @@ pub async fn global_webhook(
                 "connecting" => "connecting",
                 _ => state_str,
             };
+
+            tracing::info!("[Webhook] connection.update: instance={} state={} -> db_status={} for user_id={}", instance_name, state_str, db_status, user_id);
 
             sqlx::query(
                 "UPDATE whatsapp_connections SET status = $1, updated_at = NOW() WHERE user_id = $2"
@@ -414,17 +433,16 @@ pub async fn global_webhook(
                 }
             });
             state.ws_manager.broadcast_to_user(user_id, &ws_msg.to_string()).await;
-
-            tracing::info!("Global webhook: connection.update for instance '{}' -> {}", instance_name, db_status);
         }
 
         "qrcode.updated" => {
             let data = &payload["data"];
-            // Extract QR base64 from various possible payload structures
             let qr_base64 = data["qrcode"]["base64"].as_str()
                 .or_else(|| data["qrcode"].as_str())
                 .or_else(|| data["base64"].as_str())
                 .unwrap_or("");
+
+            tracing::info!("[Webhook] qrcode.updated: instance={} user_id={} has_qr={}", instance_name, user_id, !qr_base64.is_empty());
 
             if !qr_base64.is_empty() {
                 let qr_data = if qr_base64.starts_with("data:") {
@@ -433,7 +451,6 @@ pub async fn global_webhook(
                     format!("data:image/png;base64,{}", qr_base64)
                 };
 
-                // Push QR code via WebSocket to the user
                 let ws_msg = serde_json::json!({
                     "type": "qr_update",
                     "data": {
@@ -441,13 +458,11 @@ pub async fn global_webhook(
                     }
                 });
                 state.ws_manager.broadcast_to_user(user_id, &ws_msg.to_string()).await;
-
-                tracing::info!("Global webhook: qrcode.updated for instance '{}'", instance_name);
             }
         }
 
         _ => {
-            tracing::debug!("Global webhook: unhandled event '{}' for instance '{}'", event, instance_name);
+            tracing::debug!("[Webhook] unhandled event '{}' for instance '{}' user_id={}", event, instance_name, user_id);
         }
     }
 

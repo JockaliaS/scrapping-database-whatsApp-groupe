@@ -116,7 +116,7 @@ async fn main() {
         .route("/auth/login", post(routes::auth::login))
         .route("/auth/register", post(routes::auth::register))
         .route("/webhook/hub-spoke", post(routes::webhook::hub_spoke_webhook))
-        .route("/webhook/global", post(routes::webhook::global_webhook));
+        .route("/webhook/whatsapp/{user_id}", post(routes::webhook::per_user_webhook));
 
     // Authenticated routes
     let api_routes = Router::new()
