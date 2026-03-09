@@ -438,6 +438,86 @@ pub async fn list_evolution_instances(
     })))
 }
 
+pub async fn test_alert(
+    State(state): State<AppState>,
+    user_id: Uuid,
+) -> Result<Json<serde_json::Value>, AppError> {
+    tracing::info!("[WhatsApp] test_alert user_id={}", user_id);
+
+    let evolution = state.evolution.as_ref()
+        .ok_or_else(|| AppError::BadRequest("Evolution API not configured".into()))?;
+
+    // Get user's alert_number from profile
+    let profile = sqlx::query_as::<_, (Option<String>, Option<String>)>(
+        "SELECT alert_number, alert_template FROM profiles WHERE user_id = $1"
+    )
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Profile not found".into()))?;
+
+    let alert_number = profile.0
+        .ok_or_else(|| AppError::BadRequest("Aucun numero d'alerte configure. Renseignez-le d'abord.".into()))?;
+
+    if alert_number.trim().is_empty() {
+        return Err(AppError::BadRequest("Aucun numero d'alerte configure. Renseignez-le d'abord.".into()));
+    }
+
+    // Get user's connected instance
+    let conn = sqlx::query_as::<_, (String, String)>(
+        "SELECT instance_name, status FROM whatsapp_connections WHERE user_id = $1"
+    )
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::BadRequest("Aucune connexion WhatsApp. Connectez-vous d'abord.".into()))?;
+
+    if conn.1 != "connected" && conn.1 != "open" {
+        return Err(AppError::BadRequest(format!("WhatsApp n'est pas connecte (statut: {}). Reconnectez-vous.", conn.1)));
+    }
+
+    let instance_name = &conn.0;
+
+    // Get user name
+    let user_name = sqlx::query_scalar::<_, Option<String>>(
+        "SELECT full_name FROM users WHERE id = $1"
+    )
+    .bind(user_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(None)
+    .unwrap_or_else(|| "Utilisateur".to_string());
+
+    // Send test message
+    let test_message = format!(
+        "*RADAR - Test d'alerte*\n\
+        ━━━━━━━━━━━━━━━━━━━━\n\
+        Bonjour {} !\n\n\
+        Si vous recevez ce message, vos alertes WhatsApp fonctionnent correctement.\n\n\
+        Instance: {}\n\
+        Numero d'alerte: {}\n\
+        ━━━━━━━━━━━━━━━━━━━━\n\
+        Envoye par Radar",
+        user_name, instance_name, alert_number
+    );
+
+    tracing::info!("[WhatsApp] test_alert: sending to {} via instance {}", alert_number, instance_name);
+
+    match evolution.send_message(instance_name, &alert_number, &test_message).await {
+        Ok(_) => {
+            tracing::info!("[WhatsApp] test_alert: sent OK to {}", alert_number);
+            Ok(Json(serde_json::json!({
+                "success": true,
+                "message": format!("Message de test envoye a {}", alert_number)
+            })))
+        }
+        Err(e) => {
+            tracing::error!("[WhatsApp] test_alert: FAILED: {}", e);
+            Err(AppError::BadRequest(format!("Echec de l'envoi: {}", e)))
+        }
+    }
+}
+
 pub async fn disconnect(
     State(state): State<AppState>,
     user_id: Uuid,
