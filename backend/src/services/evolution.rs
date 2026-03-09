@@ -147,6 +147,26 @@ impl EvolutionService {
         Ok(body)
     }
 
+    pub async fn get_webhook(&self, instance_name: &str) -> anyhow::Result<Value> {
+        let url = format!("{}/webhook/find/{}", self.base_url, instance_name);
+        tracing::info!("[Evolution] get_webhook instance={}", instance_name);
+        let resp = self.client
+            .get(&url)
+            .header("apikey", &self.api_key)
+            .send()
+            .await?;
+        let result = self.check_response(resp).await;
+        match &result {
+            Ok(v) => {
+                let wh_url = v["url"].as_str().unwrap_or("none");
+                let enabled = v["enabled"].as_bool().unwrap_or(false);
+                tracing::info!("[Evolution] get_webhook instance={} url={} enabled={}", instance_name, wh_url, enabled);
+            }
+            Err(e) => tracing::warn!("[Evolution] get_webhook FAILED instance={}: {}", instance_name, e),
+        }
+        result
+    }
+
     pub async fn set_webhook(&self, instance_name: &str, webhook_url: &str) -> anyhow::Result<Value> {
         let url = format!("{}/webhook/set/{}", self.base_url, instance_name);
         tracing::info!("[Evolution] set_webhook instance={} url={}", instance_name, webhook_url);

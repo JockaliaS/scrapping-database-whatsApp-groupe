@@ -46,6 +46,7 @@ export default function Onboarding() {
   const [pathBSuccess, setPathBSuccess] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookUrlCopied, setWebhookUrlCopied] = useState(false);
+  const [connectionChecks, setConnectionChecks] = useState(null);
 
   // Step 4
   const [groups, setGroups] = useState([]);
@@ -181,6 +182,7 @@ export default function Onboarding() {
       const result = await connectExistingWhatsApp(existingInstanceName.trim());
       setWaStatus(result.status);
       setWebhookUrl(result.webhook_url || '');
+      setConnectionChecks(result.checks || null);
       setPathBSuccess(true);
     } catch (err) {
       setWaError(err.message || 'Erreur de connexion');
@@ -496,25 +498,55 @@ export default function Onboarding() {
                 </button>
               </div>
             ) : pathBSuccess ? (
-              /* Path B: Success state — MUST show webhook URL before continuing */
+              /* Path B: Success state — show real test results + webhook URL */
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 space-y-6">
                 <div className="text-center space-y-4">
                   <div className="size-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                    <span className="material-symbols-outlined text-green-600 text-4xl">check_circle</span>
+                    <span className="material-symbols-outlined text-green-600 text-4xl">verified</span>
                   </div>
                   <h3 className="text-2xl font-bold text-slate-900">
-                    Instance {existingInstanceName} verifiee et connectee a Radar.
+                    Instance {existingInstanceName} testee et validee
                   </h3>
                 </div>
+
+                {/* Test results */}
+                {connectionChecks && (
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 p-5 max-w-lg mx-auto space-y-2">
+                    <h4 className="font-bold text-slate-700 text-sm mb-3">Tests de connectivite</h4>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="material-symbols-outlined text-green-500 text-base">check_circle</span>
+                      <span className="text-slate-700">Instance trouvee dans Evolution API</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="material-symbols-outlined text-green-500 text-base">check_circle</span>
+                      <span className="text-slate-700">WhatsApp connecte (statut: open)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="material-symbols-outlined text-green-500 text-base">check_circle</span>
+                      <span className="text-slate-700">{connectionChecks.groups_count} groupe{connectionChecks.groups_count > 1 ? 's' : ''} accessible{connectionChecks.groups_count > 1 ? 's' : ''}</span>
+                    </div>
+                    {connectionChecks.webhook_already_configured && (
+                      <div className="flex items-start gap-2 text-sm mt-2 bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <span className="material-symbols-outlined text-blue-500 text-base shrink-0 mt-0.5">info</span>
+                        <span className="text-blue-700">
+                          Un webhook est deja configure sur cette instance
+                          {connectionChecks.existing_webhook_url && (
+                            <span className="block text-xs font-mono text-blue-500 mt-1 break-all">{connectionChecks.existing_webhook_url}</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Webhook URL — prominent amber box */}
                 <div className="bg-amber-50 rounded-xl border-2 border-amber-300 p-6 space-y-4 max-w-lg mx-auto">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-amber-600 text-xl">warning</span>
-                    <h4 className="font-bold text-amber-800 text-base">URL a transmettre a votre administrateur Jockalia</h4>
+                    <span className="material-symbols-outlined text-amber-600 text-xl">link</span>
+                    <h4 className="font-bold text-amber-800 text-base">URL webhook Radar a configurer</h4>
                   </div>
                   <p className="text-sm text-amber-700">
-                    Cette URL doit etre configuree dans Evolution API sur votre instance <strong>{existingInstanceName}</strong> pour que Radar puisse recevoir vos messages de groupe.
+                    Transmettez cette URL a votre administrateur pour qu'il la configure dans Evolution API sur l'instance <strong>{existingInstanceName}</strong>.
                   </p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 bg-white rounded-lg border-2 border-amber-200 px-4 py-3 text-sm font-mono text-slate-800 break-all select-all">
@@ -536,9 +568,11 @@ export default function Onboarding() {
                       {webhookUrlCopied ? 'Copie !' : 'Copier'}
                     </button>
                   </div>
-                  <p className="text-xs text-amber-600">
-                    Si vous utilisez deja un autre outil Jockalia Services, cette URL est peut-etre deja active.
-                  </p>
+                  {connectionChecks?.webhook_already_configured && (
+                    <p className="text-xs text-amber-600 font-medium">
+                      Attention : un webhook existe deja sur cette instance. L'administrateur devra le remplacer ou configurer un relais multi-webhook.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex justify-center pt-2">

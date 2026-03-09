@@ -250,11 +250,11 @@ pub async fn connect_existing(
         return Err(AppError::BadRequest("Instance name is required".into()));
     }
 
-    // Verify instance exists
-    tracing::info!("[WhatsApp] connect_existing: listing instances to verify '{}' exists", instance_name);
+    // ── TEST 1: Instance exists in Evolution API? ──
+    tracing::info!("[WhatsApp] connect_existing: TEST 1 — checking instance '{}' exists", instance_name);
     let instances = evolution.list_instances().await.map_err(|e| {
         tracing::error!("[WhatsApp] connect_existing: list_instances failed: {}", e);
-        AppError::BadRequest(format!("Failed to list instances: {}", e))
+        AppError::BadRequest(format!("Impossible de contacter Evolution API: {}", e))
     })?;
 
     let instance_exists = instances.iter().any(|inst| {
@@ -270,40 +270,84 @@ pub async fn connect_existing(
                 .or_else(|| inst["name"].as_str())
                 .unwrap_or("?").to_string()
         }).collect();
-        tracing::error!("[WhatsApp] connect_existing: '{}' NOT FOUND. Available: {:?}", instance_name, names);
+        tracing::error!("[WhatsApp] connect_existing: TEST 1 FAILED — '{}' not found. Available: {:?}", instance_name, names);
         return Err(AppError::BadRequest(format!(
-            "Instance '{}' not found in Evolution API",
-            instance_name
+            "Instance '{}' introuvable dans Evolution API. Instances disponibles: {}",
+            instance_name,
+            names.join(", ")
         )));
     }
+    tracing::info!("[WhatsApp] connect_existing: TEST 1 OK — instance '{}' exists", instance_name);
 
-    tracing::info!("[WhatsApp] connect_existing: instance '{}' found, checking status", instance_name);
-
-    // Check connection status
+    // ── TEST 2: Instance is connected (status = open)? ──
+    tracing::info!("[WhatsApp] connect_existing: TEST 2 — checking connection status");
     let status_str = match evolution.get_instance_status(&instance_name).await {
         Ok(status) => {
             let s = status["state"].as_str()
                 .or_else(|| status["instance"]["state"].as_str())
                 .unwrap_or("unknown")
                 .to_string();
-            tracing::info!("[WhatsApp] connect_existing: instance '{}' status={}", instance_name, s);
+            tracing::info!("[WhatsApp] connect_existing: TEST 2 result — instance '{}' state={}", instance_name, s);
             s
         }
         Err(e) => {
-            tracing::warn!("[WhatsApp] connect_existing: get_instance_status failed for '{}': {}", instance_name, e);
-            "unknown".to_string()
+            tracing::error!("[WhatsApp] connect_existing: TEST 2 FAILED — cannot get status: {}", e);
+            return Err(AppError::BadRequest(format!(
+                "Impossible de verifier le statut de l'instance '{}': {}",
+                instance_name, e
+            )));
         }
     };
 
-    // Save to whatsapp_connections
-    let db_status = if status_str == "open" { "connected" } else { "connecting" };
-    tracing::info!("[WhatsApp] connect_existing: saving connection instance={} db_status={}", instance_name, db_status);
+    if status_str != "open" {
+        tracing::error!("[WhatsApp] connect_existing: TEST 2 FAILED — instance '{}' is '{}', not 'open'", instance_name, status_str);
+        return Err(AppError::BadRequest(format!(
+            "L'instance '{}' n'est pas connectee (statut: {}). Elle doit etre en statut 'open' pour fonctionner avec Radar.",
+            instance_name, status_str
+        )));
+    }
+    tracing::info!("[WhatsApp] connect_existing: TEST 2 OK — instance is open");
+
+    // ── TEST 3: Can we fetch groups? (proves API access works end-to-end) ──
+    tracing::info!("[WhatsApp] connect_existing: TEST 3 — fetching groups to verify API access");
+    let groups_result = evolution.get_groups(&instance_name).await;
+    let groups_count = match &groups_result {
+        Ok(groups) => {
+            tracing::info!("[WhatsApp] connect_existing: TEST 3 OK — {} groups accessible", groups.len());
+            groups.len()
+        }
+        Err(e) => {
+            tracing::error!("[WhatsApp] connect_existing: TEST 3 FAILED — cannot fetch groups: {}", e);
+            return Err(AppError::BadRequest(format!(
+                "L'instance '{}' est connectee mais impossible de recuperer les groupes: {}. Verifiez que le numero WhatsApp est bien actif.",
+                instance_name, e
+            )));
+        }
+    };
+
+    // ── TEST 4: Check current webhook config ──
+    tracing::info!("[WhatsApp] connect_existing: TEST 4 — checking webhook configuration");
+    let mut webhook_already_set = false;
+    let mut existing_webhook_url = String::new();
+    if let Ok(wh) = evolution.get_webhook(&instance_name).await {
+        let url = wh["url"].as_str().unwrap_or("");
+        let enabled = wh["enabled"].as_bool().unwrap_or(false);
+        tracing::info!("[WhatsApp] connect_existing: TEST 4 — existing webhook: url={} enabled={}", url, enabled);
+        if enabled && !url.is_empty() {
+            webhook_already_set = true;
+            existing_webhook_url = url.to_string();
+        }
+    } else {
+        tracing::info!("[WhatsApp] connect_existing: TEST 4 — no webhook configured");
+    }
+
+    // ── All tests passed — save to DB ──
+    tracing::info!("[WhatsApp] connect_existing: ALL TESTS PASSED — saving connection");
 
     let updated = sqlx::query(
-        "UPDATE whatsapp_connections SET instance_name = $1, status = $2, updated_at = NOW() WHERE user_id = $3"
+        "UPDATE whatsapp_connections SET instance_name = $1, status = 'connected', updated_at = NOW() WHERE user_id = $2"
     )
     .bind(&instance_name)
-    .bind(db_status)
     .bind(user_id)
     .execute(&state.db)
     .await?;
@@ -311,19 +355,16 @@ pub async fn connect_existing(
     if updated.rows_affected() == 0 {
         tracing::info!("[WhatsApp] connect_existing: inserting new connection row");
         sqlx::query(
-            "INSERT INTO whatsapp_connections (id, user_id, instance_name, status) VALUES ($1, $2, $3, $4)"
+            "INSERT INTO whatsapp_connections (id, user_id, instance_name, status) VALUES ($1, $2, $3, 'connected')"
         )
         .bind(Uuid::new_v4())
         .bind(user_id)
         .bind(&instance_name)
-        .bind(db_status)
         .execute(&state.db)
         .await?;
-    } else {
-        tracing::info!("[WhatsApp] connect_existing: updated existing connection row");
     }
 
-    // Option B: user must manually configure webhook — provide their personal URL
+    // Build personal webhook URL
     let webhook_url = format!("{}/webhook/whatsapp/{}", state.config.backend_url, user_id);
 
     // Save webhook_url in DB
@@ -335,13 +376,21 @@ pub async fn connect_existing(
     .execute(&state.db)
     .await;
 
-    tracing::info!("[WhatsApp] connect_existing: DONE user_id={} instance={} status={} webhook_url={}", user_id, instance_name, db_status, webhook_url);
+    tracing::info!("[WhatsApp] connect_existing: DONE user_id={} instance={} groups={} webhook_url={}", user_id, instance_name, groups_count, webhook_url);
 
     Ok(Json(serde_json::json!({
-        "status": db_status,
+        "status": "connected",
         "instance_name": instance_name,
         "webhook_url": webhook_url,
-        "message": "Instance verifiee et connectee a Radar. Configurez le webhook dans Evolution API."
+        "groups_count": groups_count,
+        "checks": {
+            "instance_exists": true,
+            "instance_connected": true,
+            "groups_accessible": true,
+            "groups_count": groups_count,
+            "webhook_already_configured": webhook_already_set,
+            "existing_webhook_url": existing_webhook_url,
+        }
     })))
 }
 
