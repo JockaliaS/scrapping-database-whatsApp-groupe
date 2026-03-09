@@ -5,114 +5,12 @@ use crate::errors::AppError;
 use crate::models::group::Group;
 use crate::AppState;
 
+/// GET /api/groups — fast DB-only read, no Evolution API call
 pub async fn list_groups(
     State(state): State<AppState>,
     user_id: Uuid,
 ) -> Result<Json<Vec<Group>>, AppError> {
-    tracing::info!("[Groups] list_groups called for user_id={}", user_id);
-
-    // First sync groups from Evolution API if connection exists
-    let conn = sqlx::query_as::<_, (String,)>(
-        "SELECT instance_name FROM whatsapp_connections WHERE user_id = $1 AND status = 'connected'"
-    )
-    .bind(user_id)
-    .fetch_optional(&state.db)
-    .await;
-
-    match &conn {
-        Ok(Some(c)) => tracing::info!("[Groups] user_id={} has connected instance: {}", user_id, c.0),
-        Ok(None) => tracing::warn!("[Groups] user_id={} has NO connected whatsapp_connection (status != 'connected')", user_id),
-        Err(e) => tracing::error!("[Groups] user_id={} DB error fetching connection: {}", user_id, e),
-    }
-
-    // Also log ALL connections for this user regardless of status
-    let all_conns = sqlx::query_as::<_, (String, String)>(
-        "SELECT instance_name, status FROM whatsapp_connections WHERE user_id = $1"
-    )
-    .bind(user_id)
-    .fetch_all(&state.db)
-    .await;
-
-    match &all_conns {
-        Ok(conns) => {
-            if conns.is_empty() {
-                tracing::warn!("[Groups] user_id={} has ZERO whatsapp_connections rows", user_id);
-            } else {
-                for (name, status) in conns {
-                    tracing::info!("[Groups] user_id={} connection: instance={} status={}", user_id, name, status);
-                }
-            }
-        }
-        Err(e) => tracing::error!("[Groups] user_id={} DB error listing all connections: {}", user_id, e),
-    }
-
-    if let Ok(Some(conn)) = conn {
-        if let Some(evolution) = &state.evolution {
-            tracing::info!("[Groups] Calling Evolution API get_groups for instance={}", conn.0);
-            match evolution.get_groups(&conn.0).await {
-                Ok(api_groups) => {
-                    tracing::info!("[Groups] Evolution returned {} groups for instance={}", api_groups.len(), conn.0);
-                    for (i, g) in api_groups.iter().enumerate() {
-                        let gid = g["id"].as_str().unwrap_or_default();
-                        let name = g["subject"].as_str().unwrap_or("Unknown");
-                        let size = g["size"].as_i64().unwrap_or(0) as i32;
-                        tracing::debug!("[Groups] group[{}]: id={} name={} size={}", i, gid, name, size);
-
-                        // Check if group already exists to avoid resetting is_monitored
-                        let existing = sqlx::query_scalar::<_, i64>(
-                            "SELECT COUNT(*) FROM groups WHERE user_id = $1 AND whatsapp_group_id = $2"
-                        )
-                        .bind(user_id)
-                        .bind(gid)
-                        .fetch_one(&state.db)
-                        .await
-                        .unwrap_or(0);
-
-                        if existing > 0 {
-                            // Update name/size only, preserve is_monitored
-                            let result = sqlx::query(
-                                "UPDATE groups SET name = $1, member_count = $2 WHERE user_id = $3 AND whatsapp_group_id = $4"
-                            )
-                            .bind(name)
-                            .bind(size)
-                            .bind(user_id)
-                            .bind(gid)
-                            .execute(&state.db)
-                            .await;
-
-                            if let Err(e) = result {
-                                tracing::error!("[Groups] DB update failed for group gid={}: {}", gid, e);
-                            }
-                        } else {
-                            // New group — insert with is_monitored = false
-                            let result = sqlx::query(
-                                r#"INSERT INTO groups (id, user_id, whatsapp_group_id, name, member_count)
-                                   VALUES ($1, $2, $3, $4, $5)"#,
-                            )
-                            .bind(Uuid::new_v4())
-                            .bind(user_id)
-                            .bind(gid)
-                            .bind(name)
-                            .bind(size)
-                            .execute(&state.db)
-                            .await;
-
-                            if let Err(e) = result {
-                                tracing::error!("[Groups] DB insert failed for group gid={}: {}", gid, e);
-                            } else {
-                                tracing::info!("[Groups] New group added: gid={} name={}", gid, name);
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    tracing::error!("[Groups] Evolution get_groups FAILED for instance={}: {}", conn.0, e);
-                }
-            }
-        } else {
-            tracing::warn!("[Groups] Evolution service not configured — cannot fetch groups");
-        }
-    }
+    tracing::info!("[Groups] list_groups (DB only) user_id={}", user_id);
 
     let groups = sqlx::query_as::<_, Group>(
         "SELECT * FROM groups WHERE user_id = $1 ORDER BY name"
@@ -125,6 +23,84 @@ pub async fn list_groups(
     Ok(Json(groups))
 }
 
+/// POST /api/groups/sync — fetch from Evolution API, upsert into DB, return updated list
+pub async fn sync_groups(
+    State(state): State<AppState>,
+    user_id: Uuid,
+) -> Result<Json<Vec<Group>>, AppError> {
+    tracing::info!("[Groups] sync_groups called for user_id={}", user_id);
+
+    let conn = sqlx::query_as::<_, (String,)>(
+        "SELECT instance_name FROM whatsapp_connections WHERE user_id = $1 AND status = 'connected'"
+    )
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await?;
+
+    let instance_name = match conn {
+        Some(c) => {
+            tracing::info!("[Groups] sync: user_id={} instance={}", user_id, c.0);
+            c.0
+        }
+        None => {
+            tracing::warn!("[Groups] sync: user_id={} has no connected instance", user_id);
+            return Err(AppError::BadRequest("Aucune instance WhatsApp connectee.".into()));
+        }
+    };
+
+    let evolution = state.evolution.as_ref()
+        .ok_or_else(|| AppError::BadRequest("Evolution API not configured".into()))?;
+
+    let api_groups = evolution.get_groups(&instance_name).await
+        .map_err(|e| {
+            tracing::error!("[Groups] sync: Evolution get_groups failed: {}", e);
+            AppError::BadRequest(format!("Erreur Evolution API: {}", e))
+        })?;
+
+    tracing::info!("[Groups] sync: Evolution returned {} groups", api_groups.len());
+
+    let mut synced = 0;
+    for g in &api_groups {
+        let gid = g["id"].as_str().unwrap_or_default();
+        if gid.is_empty() { continue; }
+        let name = g["subject"].as_str().unwrap_or("Unknown");
+        let size = g["size"].as_i64().unwrap_or(0) as i32;
+
+        // Atomic upsert — preserves is_monitored on conflict
+        let result = sqlx::query(
+            r#"INSERT INTO groups (id, user_id, whatsapp_group_id, name, member_count)
+               VALUES ($1, $2, $3, $4, $5)
+               ON CONFLICT (user_id, whatsapp_group_id)
+               DO UPDATE SET name = EXCLUDED.name, member_count = EXCLUDED.member_count"#
+        )
+        .bind(Uuid::new_v4())
+        .bind(user_id)
+        .bind(gid)
+        .bind(name)
+        .bind(size)
+        .execute(&state.db)
+        .await;
+
+        match result {
+            Ok(_) => synced += 1,
+            Err(e) => tracing::error!("[Groups] sync: upsert failed gid={}: {}", gid, e),
+        }
+    }
+
+    tracing::info!("[Groups] sync: upserted {} groups for user_id={}", synced, user_id);
+
+    // Return fresh list from DB
+    let groups = sqlx::query_as::<_, Group>(
+        "SELECT * FROM groups WHERE user_id = $1 ORDER BY name"
+    )
+    .bind(user_id)
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(groups))
+}
+
+/// PUT /api/groups/:id/toggle
 pub async fn toggle_group(
     State(state): State<AppState>,
     user_id: Uuid,
@@ -143,6 +119,6 @@ pub async fn toggle_group(
     .await?
     .ok_or_else(|| AppError::NotFound("Group not found".into()))?;
 
-    tracing::info!("[Groups] toggle_group OK group={} is_monitored={}", group.name, group.is_monitored);
+    tracing::info!("[Groups] toggle OK group={} is_monitored={}", group.name, group.is_monitored);
     Ok(Json(group))
 }

@@ -123,6 +123,7 @@ async fn main() {
         .route("/api/profile", get(profile_get).put(profile_update))
         .route("/api/profile/generate-keywords", post(profile_generate))
         .route("/api/groups", get(groups_list))
+        .route("/api/groups/sync", post(groups_sync))
         .route("/api/groups/{id}/toggle", put(groups_toggle))
         .route("/api/opportunities", get(opportunities_list))
         .route("/api/opportunities/{id}", get(opportunities_get))
@@ -255,6 +256,14 @@ async fn groups_list(
 ) -> Result<impl IntoResponse, errors::AppError> {
     let user_id = extract_user_id(&headers, &state.config.jwt_secret)?;
     routes::groups::list_groups(State(state), user_id).await.map(|j| j.into_response())
+}
+
+async fn groups_sync(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, errors::AppError> {
+    let user_id = extract_user_id(&headers, &state.config.jwt_secret)?;
+    routes::groups::sync_groups(State(state), user_id).await.map(|j| j.into_response())
 }
 
 async fn groups_toggle(

@@ -57,6 +57,7 @@ export const generateKeywords = (raw_text) =>
 
 // Groups
 export const getGroups = () => request('/api/groups');
+export const syncGroups = () => request('/api/groups/sync', { method: 'POST' });
 export const toggleGroup = (id) =>
   request(`/api/groups/${id}/toggle`, { method: 'PUT' });
 

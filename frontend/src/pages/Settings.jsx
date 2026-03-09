@@ -11,6 +11,7 @@ import {
   getWhatsAppStatus,
   disconnectWhatsApp,
   getGroups,
+  syncGroups,
   toggleGroup,
   testAlert,
 } from '../services/api';
@@ -43,6 +44,7 @@ export default function Settings() {
 
   // Groups
   const [groups, setGroups] = useState([]);
+  const [syncingGroups, setSyncingGroups] = useState(false);
 
   // Collaborative
   const [collaborativeEnabled, setCollaborativeEnabled] = useState(false);
@@ -410,6 +412,25 @@ export default function Settings() {
             <div className="flex items-center gap-3 ml-auto">
               <span className="text-sm text-slate-500">{groups.length} groupe{groups.length > 1 ? 's' : ''}</span>
               <span className="text-sm font-bold text-primary">{monitoredCount} en ecoute</span>
+              <button
+                onClick={async () => {
+                  setSyncingGroups(true);
+                  try {
+                    const data = await syncGroups();
+                    setGroups(Array.isArray(data) ? data : []);
+                  } catch {
+                    // ignore
+                  }
+                  setSyncingGroups(false);
+                }}
+                disabled={syncingGroups}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-all disabled:opacity-50"
+              >
+                <span className={`material-symbols-outlined text-sm ${syncingGroups ? 'animate-spin' : ''}`}>
+                  {syncingGroups ? 'progress_activity' : 'refresh'}
+                </span>
+                {syncingGroups ? 'Sync...' : 'Rafraichir'}
+              </button>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">

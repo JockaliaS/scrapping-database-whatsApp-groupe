@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateKeywords, updateProfile, connectWhatsApp, getWhatsAppQR, getWhatsAppStatus, getGroups, toggleGroup, connectExistingWhatsApp, listInstances } from '../services/api';
+import { generateKeywords, updateProfile, connectWhatsApp, getWhatsAppQR, getWhatsAppStatus, getGroups, syncGroups, toggleGroup, connectExistingWhatsApp, listInstances } from '../services/api';
 import KeywordChips from '../components/KeywordChips';
 import useWebSocket from '../hooks/useWebSocket';
 
@@ -209,7 +209,7 @@ export default function Onboarding() {
   useEffect(() => {
     if (step === 4) {
       setLoadingGroups(true);
-      getGroups()
+      syncGroups()
         .then(setGroups)
         .catch(() => {})
         .finally(() => setLoadingGroups(false));
