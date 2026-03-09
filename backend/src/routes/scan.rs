@@ -22,8 +22,12 @@ pub struct ScanStatus {
     pub status: String,
     pub progress: f64,
     pub messages_scanned: i64,
+    /// Alias for frontend compatibility
+    #[serde(rename = "messages_analyzed")]
+    pub messages_analyzed: i64,
     pub messages_fetched: i64,
     pub matches_found: i64,
+    pub new_contacts: i64,
     pub current_group: Option<String>,
 }
 
@@ -60,8 +64,10 @@ pub async fn start_scan(
         status: "running".into(),
         progress: 0.0,
         messages_scanned: 0,
+        messages_analyzed: 0,
         messages_fetched: 0,
         matches_found: 0,
+        new_contacts: 0,
         current_group: None,
     };
 
@@ -161,6 +167,7 @@ pub async fn start_scan(
                     let mut scans = scans.write().await;
                     if let Some(s) = scans.get_mut(&scan_id) {
                         s.messages_scanned += 1;
+                        s.messages_analyzed += 1;
                     }
                 }
 
@@ -202,7 +209,8 @@ pub async fn start_scan(
                     match gemini.score_opportunity(summary, &profile.keywords, sector, content, &group_name, sender_name).await {
                         Ok(score_result) => {
                             if score_result.score >= profile.min_score {
-                                // Upsert contact
+                                // Upsert contact (detect new vs existing)
+                                let new_contact_id = Uuid::new_v4();
                                 let contact_id = sqlx::query_scalar::<_, Uuid>(
                                     r#"INSERT INTO contacts (id, phone, name, total_announcements)
                                        VALUES ($1, $2, $3, 1)
@@ -211,12 +219,20 @@ pub async fn start_scan(
                                          updated_at = NOW()
                                        RETURNING id"#,
                                 )
-                                .bind(Uuid::new_v4())
+                                .bind(new_contact_id)
                                 .bind(sender_phone)
                                 .bind(sender_name)
                                 .fetch_one(&db)
                                 .await
                                 .ok();
+
+                                // If returned id matches our generated id, it's a new contact
+                                if contact_id == Some(new_contact_id) {
+                                    let mut scans = scans.write().await;
+                                    if let Some(s) = scans.get_mut(&scan_id) {
+                                        s.new_contacts += 1;
+                                    }
+                                }
 
                                 let _ = sqlx::query(
                                     r#"INSERT INTO opportunities

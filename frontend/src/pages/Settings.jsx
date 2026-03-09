@@ -45,6 +45,7 @@ export default function Settings() {
   // Groups
   const [groups, setGroups] = useState([]);
   const [syncingGroups, setSyncingGroups] = useState(false);
+  const [groupSearch, setGroupSearch] = useState('');
 
   // Collaborative
   const [collaborativeEnabled, setCollaborativeEnabled] = useState(false);
@@ -434,6 +435,15 @@ export default function Settings() {
             </div>
           </div>
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-6 pt-4">
+              <input
+                type="text"
+                placeholder="Filtrer par nom..."
+                value={groupSearch}
+                onChange={(e) => setGroupSearch(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-primary focus:border-primary"
+              />
+            </div>
             <div className="max-h-96 overflow-y-auto">
               <table className="w-full text-left">
                 <thead className="bg-slate-50 text-xs text-slate-500 uppercase font-semibold sticky top-0">
@@ -444,7 +454,7 @@ export default function Settings() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {groups.map((group) => (
+                  {groups.filter((g) => g.name?.toLowerCase().includes(groupSearch.toLowerCase())).map((group) => (
                     <tr key={group.id} className={group.is_monitored ? 'bg-primary/5' : ''}>
                       <td className="px-6 py-4 font-medium">{group.name || '(sans nom)'}</td>
                       <td className="px-6 py-4 text-center">

@@ -10,6 +10,7 @@ export default function Scan() {
 
   const [groups, setGroups] = useState([]);
   const [selectedGroups, setSelectedGroups] = useState([]);
+  const [groupSearch, setGroupSearch] = useState('');
   const [period, setPeriod] = useState('30 jours');
   const [warningVisible, setWarningVisible] = useState(true);
 
@@ -60,16 +61,16 @@ export default function Scan() {
       pollRef.current = setInterval(async () => {
         try {
           const status = await getScanStatus(result.scan_id);
-          setScanProgress(status.progress || 0);
+          setScanProgress(Math.round(status.progress || 0));
           setScanGroupName(status.current_group || '');
-          setMessagesAnalyzed(status.messages_analyzed || 0);
+          setMessagesAnalyzed(status.messages_analyzed || status.messages_scanned || 0);
           setMatchesFound(status.matches_found || 0);
 
           if (status.progress >= 100 || status.status === 'completed') {
             clearInterval(pollRef.current);
             setScanning(false);
             setLastScan({
-              totalScanned: status.messages_analyzed || 0,
+              totalScanned: status.messages_analyzed || status.messages_scanned || 0,
               matches: status.matches_found || 0,
               newContacts: status.new_contacts || 0,
             });
@@ -138,8 +139,15 @@ export default function Scan() {
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-3">Selectionner les groupes</label>
+                    <input
+                      type="text"
+                      placeholder="Filtrer par nom..."
+                      value={groupSearch}
+                      onChange={(e) => setGroupSearch(e.target.value)}
+                      className="w-full mb-3 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-primary focus:border-primary"
+                    />
                     <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                      {groups.map((group) => (
+                      {groups.filter((g) => g.name?.toLowerCase().includes(groupSearch.toLowerCase())).map((group) => (
                         <label key={group.id} className="flex items-center p-3 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
                           <input
                             type="checkbox"

@@ -51,6 +51,7 @@ export default function Onboarding() {
 
   // Step 4
   const [groups, setGroups] = useState([]);
+  const [groupSearch, setGroupSearch] = useState('');
 
   // Listen for WebSocket QR updates (from global webhook qrcode.updated events)
   useEffect(() => {
@@ -726,8 +727,16 @@ export default function Onboarding() {
               ) : groups.length === 0 ? (
                 <p className="text-center text-slate-400 py-8">Aucun groupe detecte. Assurez-vous que WhatsApp est connecte.</p>
               ) : (
+                <>
+                <input
+                  type="text"
+                  placeholder="Filtrer par nom..."
+                  value={groupSearch}
+                  onChange={(e) => setGroupSearch(e.target.value)}
+                  className="w-full mb-4 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-primary focus:border-primary"
+                />
                 <div className="space-y-2 max-h-[32rem] overflow-y-auto pr-2">
-                  {groups.map((group) => (
+                  {groups.filter((g) => g.name?.toLowerCase().includes(groupSearch.toLowerCase())).map((group) => (
                     <label
                       key={group.id}
                       className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
@@ -749,6 +758,7 @@ export default function Onboarding() {
                     </label>
                   ))}
                 </div>
+                </>
               )}
             </div>
           </>

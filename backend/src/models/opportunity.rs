@@ -41,12 +41,59 @@ pub struct StatusUpdate {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OpportunityScore {
+    #[serde(deserialize_with = "deserialize_score")]
     pub score: i32,
+    #[serde(default)]
     pub matched_keywords: Vec<String>,
+    #[serde(default)]
     pub context_analysis: String,
+    #[serde(default)]
     pub suggested_reply: String,
+    #[serde(default)]
     pub is_demand: bool,
+    #[serde(default)]
     pub is_offer: bool,
+}
+
+/// Gemini sometimes returns score as an object {"value": 75} or as a string "75"
+/// instead of a plain integer. This deserializer handles all cases.
+fn deserialize_score<'de, D>(deserializer: D) -> Result<i32, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde_json::Value;
+    let v = Value::deserialize(deserializer)?;
+    match &v {
+        Value::Number(n) => n.as_i64().map(|x| x as i32).ok_or_else(|| {
+            serde::de::Error::custom(format!("score number out of range: {}", n))
+        }),
+        Value::String(s) => s.trim().parse::<i32>().map_err(|_| {
+            serde::de::Error::custom(format!("score string not a number: {}", s))
+        }),
+        Value::Object(map) => {
+            // Try common keys: "value", "score", "result"
+            for key in &["value", "score", "result"] {
+                if let Some(val) = map.get(*key) {
+                    if let Some(n) = val.as_i64() {
+                        return Ok(n as i32);
+                    }
+                    if let Some(s) = val.as_str() {
+                        if let Ok(n) = s.trim().parse::<i32>() {
+                            return Ok(n);
+                        }
+                    }
+                }
+            }
+            // Fallback: try first numeric value in the map
+            for val in map.values() {
+                if let Some(n) = val.as_i64() {
+                    return Ok(n as i32);
+                }
+            }
+            Err(serde::de::Error::custom(format!("score object has no numeric value: {:?}", map)))
+        }
+        _ => Err(serde::de::Error::custom(format!("unexpected score type: {}", v))),
+    }
 }
 
 #[derive(Debug, Serialize, Clone)]
