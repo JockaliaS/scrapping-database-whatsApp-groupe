@@ -116,7 +116,7 @@ async fn main() {
         .route("/auth/login", post(routes::auth::login))
         .route("/auth/register", post(routes::auth::register))
         .route("/webhook/hub-spoke", post(routes::webhook::hub_spoke_webhook))
-        .route("/webhook/whatsapp/{user_id}", post(routes::webhook::per_user_webhook));
+        .route("/webhook/whatsapp/:user_id", post(routes::webhook::per_user_webhook));
 
     // Authenticated routes
     let api_routes = Router::new()
@@ -124,13 +124,13 @@ async fn main() {
         .route("/api/profile/generate-keywords", post(profile_generate))
         .route("/api/groups", get(groups_list))
         .route("/api/groups/sync", post(groups_sync))
-        .route("/api/groups/{id}/toggle", put(groups_toggle))
+        .route("/api/groups/:id/toggle", put(groups_toggle))
         .route("/api/opportunities", get(opportunities_list))
-        .route("/api/opportunities/{id}", get(opportunities_get))
-        .route("/api/opportunities/{id}/status", patch(opportunities_status))
-        .route("/api/contacts/{phone}/history", get(contacts_history))
+        .route("/api/opportunities/:id", get(opportunities_get))
+        .route("/api/opportunities/:id/status", patch(opportunities_status))
+        .route("/api/contacts/:phone/history", get(contacts_history))
         .route("/api/scan/historical", post(scan_start))
-        .route("/api/scan/status/{scan_id}", get(scan_status))
+        .route("/api/scan/status/:scan_id", get(scan_status))
         .route("/api/whatsapp/connect", post(whatsapp_connect))
         .route("/api/whatsapp/qr", get(whatsapp_qr))
         .route("/api/whatsapp/status", get(whatsapp_status))
@@ -142,11 +142,11 @@ async fn main() {
     // Admin routes
     let admin_routes = Router::new()
         .route("/api/admin/users", get(admin_list_users))
-        .route("/api/admin/users/{id}", patch(admin_update_user))
+        .route("/api/admin/users/:id", patch(admin_update_user))
         .route("/api/admin/config", get(admin_get_config).put(admin_update_config))
         .route("/api/admin/logs", get(admin_get_logs))
         .route("/api/admin/hub-spoke-tokens", get(admin_list_tokens).post(admin_create_token))
-        .route("/api/admin/hub-spoke-tokens/{id}", delete(admin_delete_token))
+        .route("/api/admin/hub-spoke-tokens/:id", delete(admin_delete_token))
         .route("/api/admin/groups", post(admin_create_group));
 
     // WebSocket route
