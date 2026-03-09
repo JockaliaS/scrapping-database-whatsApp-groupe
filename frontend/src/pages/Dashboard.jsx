@@ -127,20 +127,20 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Stat 4 - Webhooks */}
+          {/* Stat 4 - Messages recus */}
           <div
             className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md relative cursor-default"
             onMouseEnter={() => setShowWebhookTooltip(true)}
             onMouseLeave={() => setShowWebhookTooltip(false)}
           >
             <div className="flex items-center justify-between">
-              <span className="material-symbols-outlined rounded-lg bg-purple-50 p-2 text-purple-500">webhook</span>
+              <span className="material-symbols-outlined rounded-lg bg-purple-50 p-2 text-purple-500">chat</span>
               {webhookCounter > 0 && (
                 <span className="size-2 bg-green-500 rounded-full animate-pulse" title="Live"></span>
               )}
             </div>
             <div>
-              <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-text-secondary">Webhooks (aujourd'hui)</p>
+              <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-text-secondary">Messages recus (aujourd'hui)</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold text-text-primary leading-none">{webhookStats.total_today}</span>
               </div>
@@ -150,14 +150,14 @@ export default function Dashboard() {
             {showWebhookTooltip && (
               <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-slate-900 text-white rounded-xl shadow-2xl p-5 text-sm space-y-3 min-w-[280px]">
                 <div className="absolute -top-2 left-6 w-4 h-4 bg-slate-900 rotate-45 rounded-sm"></div>
-                <h4 className="font-bold text-xs uppercase tracking-widest text-slate-400 mb-3">Detail des webhooks du jour</h4>
+                <h4 className="font-bold text-xs uppercase tracking-widest text-slate-400 mb-3">Activite WhatsApp du jour</h4>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-300">Total (tous types)</span>
+                  <span className="text-slate-300">Total messages recus</span>
                   <span className="font-mono font-bold text-white">{webhookStats.total_today}</span>
                 </div>
                 <div className="border-t border-slate-700"></div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-300">Messages groupes (@g.us)</span>
+                  <span className="text-slate-300">Messages de groupes</span>
                   <span className="font-mono font-bold text-blue-400">{webhookStats.total_groups}</span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -166,7 +166,7 @@ export default function Dashboard() {
                 </div>
                 <div className="border-t border-slate-700"></div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-300">Messages traites</span>
+                  <span className="text-slate-300">Messages analyses par Radar</span>
                   <span className="font-mono font-bold text-green-400">{webhookStats.total_processed}</span>
                 </div>
               </div>
