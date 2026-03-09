@@ -22,6 +22,7 @@ pub struct ScanStatus {
     pub status: String,
     pub progress: f64,
     pub messages_scanned: i64,
+    pub messages_fetched: i64,
     pub matches_found: i64,
     pub current_group: Option<String>,
 }
@@ -38,19 +39,35 @@ pub async fn start_scan(
     Json(req): Json<ScanRequest>,
 ) -> Result<(axum::http::StatusCode, Json<serde_json::Value>), AppError> {
     let scan_id = Uuid::new_v4();
+    tracing::info!("[Scan] start_scan user_id={} scan_id={} groups={}", user_id, scan_id, req.group_ids.len());
+
+    // Check prerequisites
+    let evolution = state.evolution.clone()
+        .ok_or_else(|| AppError::BadRequest("Evolution API non configuree.".into()))?;
+
+    let conn = sqlx::query_as::<_, (String,)>(
+        "SELECT instance_name FROM whatsapp_connections WHERE user_id = $1 AND status = 'connected'"
+    )
+    .bind(user_id)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::BadRequest("Aucune instance WhatsApp connectee.".into()))?;
+
+    let instance_name = conn.0;
 
     let status = ScanStatus {
         scan_id,
         status: "running".into(),
         progress: 0.0,
         messages_scanned: 0,
+        messages_fetched: 0,
         matches_found: 0,
         current_group: None,
     };
 
     state.scans.write().await.insert(scan_id, status);
 
-    // Spawn background task for scanning
+    // Spawn background task
     let db = state.db.clone();
     let gemini = state.gemini.clone();
     let scans = state.scans.clone();
@@ -60,19 +77,21 @@ pub async fn start_scan(
         let total_groups = req.group_ids.len();
 
         for (idx, group_id) in req.group_ids.iter().enumerate() {
-            // Get group info
-            let group = sqlx::query_as::<_, (String,)>(
-                "SELECT name FROM groups WHERE id = $1 AND user_id = $2"
+            // Get group info (name + whatsapp_group_id)
+            let group = sqlx::query_as::<_, (String, String)>(
+                "SELECT name, whatsapp_group_id FROM groups WHERE id = $1 AND user_id = $2"
             )
             .bind(group_id)
             .bind(user_id)
             .fetch_optional(&db)
             .await;
 
-            let group_name = match group {
-                Ok(Some(g)) => g.0,
+            let (group_name, whatsapp_group_id) = match group {
+                Ok(Some(g)) => g,
                 _ => continue,
             };
+
+            tracing::info!("[Scan] Processing group: {} ({})", group_name, whatsapp_group_id);
 
             // Update scan status
             {
@@ -83,14 +102,21 @@ pub async fn start_scan(
                 }
             }
 
-            // Get messages for this group
-            let messages = match sqlx::query_as::<_, (Uuid, String, Option<String>, Option<String>)>(
-                "SELECT id, content, sender_name, sender_phone FROM messages WHERE group_id = $1"
-            )
-            .bind(group_id)
-            .fetch_all(&db).await {
-                Ok(m) => m,
-                Err(_) => continue,
+            // Fetch messages from Evolution API (limit 100 per group)
+            let api_messages = match evolution.fetch_messages(&instance_name, &whatsapp_group_id, 100).await {
+                Ok(msgs) => {
+                    tracing::info!("[Scan] Fetched {} messages from Evolution for group {}", msgs.len(), group_name);
+                    // Update fetched count
+                    let mut scans = scans.write().await;
+                    if let Some(s) = scans.get_mut(&scan_id) {
+                        s.messages_fetched += msgs.len() as i64;
+                    }
+                    msgs
+                }
+                Err(e) => {
+                    tracing::error!("[Scan] Failed to fetch messages for group {}: {}", group_name, e);
+                    continue;
+                }
             };
 
             // Get user profile for matching
@@ -105,7 +131,31 @@ pub async fn start_scan(
                 _ => continue,
             };
 
-            for (msg_id, content, sender_name, sender_phone) in &messages {
+            // Process each message
+            for msg_val in &api_messages {
+                // Extract message content from Evolution API format
+                let content = msg_val["message"]["conversation"].as_str()
+                    .or_else(|| msg_val["message"]["extendedTextMessage"]["text"].as_str());
+
+                let content = match content {
+                    Some(c) if !c.trim().is_empty() => c,
+                    _ => continue, // skip non-text messages
+                };
+
+                let sender_phone = msg_val["key"]["participant"].as_str()
+                    .or_else(|| msg_val["key"]["remoteJid"].as_str())
+                    .map(|s| s.split('@').next().unwrap_or(s))
+                    .unwrap_or("unknown");
+
+                let sender_name = msg_val["pushName"].as_str().unwrap_or("Unknown");
+
+                let timestamp = msg_val["messageTimestamp"].as_i64()
+                    .or_else(|| msg_val["messageTimestamp"].as_str().and_then(|s| s.parse().ok()))
+                    .unwrap_or(0);
+
+                let wa_timestamp = chrono::DateTime::from_timestamp(timestamp, 0)
+                    .unwrap_or_else(chrono::Utc::now);
+
                 // Update scanned count
                 {
                     let mut scans = scans.write().await;
@@ -113,6 +163,31 @@ pub async fn start_scan(
                         s.messages_scanned += 1;
                     }
                 }
+
+                // Store message in DB (skip if already exists based on content+timestamp+group)
+                let msg_id = match sqlx::query_scalar::<_, Uuid>(
+                    r#"INSERT INTO messages (id, group_id, sender_name, sender_phone, content, whatsapp_timestamp, raw_payload)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7)
+                       ON CONFLICT DO NOTHING
+                       RETURNING id"#,
+                )
+                .bind(Uuid::new_v4())
+                .bind(group_id)
+                .bind(sender_name)
+                .bind(sender_phone)
+                .bind(content)
+                .bind(wa_timestamp)
+                .bind(msg_val)
+                .fetch_optional(&db)
+                .await
+                {
+                    Ok(Some(id)) => id,
+                    Ok(None) => continue, // duplicate, skip
+                    Err(e) => {
+                        tracing::debug!("[Scan] Message insert error (likely duplicate): {}", e);
+                        continue;
+                    }
+                };
 
                 // Fast keyword filter
                 if !crate::services::matching::fast_keyword_filter(&profile, content) {
@@ -123,13 +198,11 @@ pub async fn start_scan(
                 if let Some(gemini) = &gemini {
                     let summary = profile.raw_text.as_deref().unwrap_or("");
                     let sector = profile.sector.as_deref().unwrap_or("");
-                    let s_name = sender_name.as_deref().unwrap_or("Unknown");
 
-                    match gemini.score_opportunity(summary, &profile.keywords, sector, content, &group_name, s_name).await {
+                    match gemini.score_opportunity(summary, &profile.keywords, sector, content, &group_name, sender_name).await {
                         Ok(score_result) => {
                             if score_result.score >= profile.min_score {
                                 // Upsert contact
-                                let phone = sender_phone.as_deref().unwrap_or("unknown");
                                 let contact_id = sqlx::query_scalar::<_, Uuid>(
                                     r#"INSERT INTO contacts (id, phone, name, total_announcements)
                                        VALUES ($1, $2, $3, 1)
@@ -139,8 +212,8 @@ pub async fn start_scan(
                                        RETURNING id"#,
                                 )
                                 .bind(Uuid::new_v4())
-                                .bind(phone)
-                                .bind(s_name)
+                                .bind(sender_phone)
+                                .bind(sender_name)
                                 .fetch_one(&db)
                                 .await
                                 .ok();
@@ -170,14 +243,22 @@ pub async fn start_scan(
                                 if let Some(s) = scans.get_mut(&scan_id) {
                                     s.matches_found += 1;
                                 }
+
+                                tracing::info!("[Scan] Match found! score={} group={} sender={}", score_result.score, group_name, sender_name);
                             }
                         }
                         Err(e) => {
-                            tracing::error!("Gemini scoring error during scan: {}", e);
+                            tracing::error!("[Scan] Gemini scoring error: {}", e);
                         }
                     }
                 }
             }
+
+            // Update group last_activity
+            let _ = sqlx::query("UPDATE groups SET last_activity = NOW() WHERE id = $1")
+                .bind(group_id)
+                .execute(&db)
+                .await;
         }
 
         // Mark scan as complete
@@ -186,6 +267,8 @@ pub async fn start_scan(
             s.status = "completed".into();
             s.progress = 100.0;
             s.current_group = None;
+            tracing::info!("[Scan] COMPLETED scan_id={} fetched={} scanned={} matches={}",
+                scan_id, s.messages_fetched, s.messages_scanned, s.matches_found);
         }
 
         // Notify via WebSocket

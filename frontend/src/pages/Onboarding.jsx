@@ -596,7 +596,7 @@ export default function Onboarding() {
 
                 <div className="flex justify-center pt-2">
                   <button
-                    onClick={() => setStep(4)}
+                    onClick={() => { updateProfile({ onboarding_complete: true }).catch(() => {}); setStep(4); }}
                     className="bg-primary text-white px-8 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
                   >
                     <span>J'ai transmis l'URL, continuer</span>
@@ -765,7 +765,7 @@ export default function Onboarding() {
           </button>
           {step < 4 ? (
             <button
-              onClick={() => setStep(step + 1)}
+              onClick={() => { if (step === 3) { updateProfile({ onboarding_complete: true }).catch(() => {}); } setStep(step + 1); }}
               className="px-10 py-3 rounded-lg bg-primary text-white font-bold hover:shadow-lg hover:shadow-primary/30 transition-all flex items-center gap-2"
             >
               <span>Continuer</span>

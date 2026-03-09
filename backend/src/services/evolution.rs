@@ -192,6 +192,41 @@ impl EvolutionService {
         result
     }
 
+    /// Fetch messages from a specific group via Evolution API
+    /// Evolution endpoint: POST /chat/findMessages/{instance}
+    pub async fn fetch_messages(&self, instance_name: &str, group_jid: &str, limit: i64) -> anyhow::Result<Vec<Value>> {
+        let url = format!("{}/chat/findMessages/{}", self.base_url, instance_name);
+        tracing::info!("[Evolution] fetch_messages instance={} group={} limit={}", instance_name, group_jid, limit);
+        let resp = self.client
+            .post(&url)
+            .header("apikey", &self.api_key)
+            .json(&json!({
+                "where": {
+                    "key": {
+                        "remoteJid": group_jid
+                    }
+                },
+                "limit": limit
+            }))
+            .send()
+            .await?;
+        let status = resp.status();
+        let raw = resp.text().await.unwrap_or_default();
+        tracing::info!("[Evolution] fetch_messages status={} body_len={}", status.as_u16(), raw.len());
+
+        if !status.is_success() {
+            tracing::error!("[Evolution] fetch_messages FAILED status={} body={}", status.as_u16(), &raw[..raw.len().min(300)]);
+            anyhow::bail!("Evolution API {}: failed to fetch messages", status.as_u16());
+        }
+
+        let messages: Vec<Value> = serde_json::from_str(&raw).unwrap_or_else(|e| {
+            tracing::error!("[Evolution] fetch_messages JSON parse error: {} — raw: {}", e, &raw[..raw.len().min(300)]);
+            vec![]
+        });
+        tracing::info!("[Evolution] fetch_messages -> {} messages", messages.len());
+        Ok(messages)
+    }
+
     pub async fn delete_instance(&self, instance_name: &str) -> anyhow::Result<()> {
         let url = format!("{}/instance/delete/{}", self.base_url, instance_name);
         tracing::info!("[Evolution] delete_instance name={}", instance_name);
