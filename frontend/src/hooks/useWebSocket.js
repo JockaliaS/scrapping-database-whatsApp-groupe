@@ -9,6 +9,7 @@ export default function useWebSocket() {
   const [newOpportunities, setNewOpportunities] = useState([]);
   const [qrCode, setQrCode] = useState(null);
   const [whatsappStatus, setWhatsappStatus] = useState(null);
+  const [webhookCounter, setWebhookCounter] = useState(0);
   const wsRef = useRef(null);
   const reconnectDelayRef = useRef(1000);
   const reconnectTimeoutRef = useRef(null);
@@ -38,6 +39,8 @@ export default function useWebSocket() {
             setQrCode(data.data?.qr_code || null);
           } else if (data.type === 'connection_update') {
             setWhatsappStatus(data.data?.status || null);
+          } else if (data.type === 'webhook_event') {
+            setWebhookCounter((prev) => prev + 1);
           }
         } catch {
           // ignore invalid JSON
@@ -96,5 +99,6 @@ export default function useWebSocket() {
     clearQrCode,
     whatsappStatus,
     clearWhatsappStatus,
+    webhookCounter,
   };
 }

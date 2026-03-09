@@ -3,14 +3,22 @@ import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import OpportunityCard from '../components/OpportunityCard';
 import useWebSocket from '../hooks/useWebSocket';
-import { getOpportunities, getGroups } from '../services/api';
+import { getOpportunities, getGroups, getWebhookStats } from '../services/api';
 
 export default function Dashboard() {
-  const { connected, newOpportunities } = useWebSocket();
+  const { connected, newOpportunities, webhookCounter } = useWebSocket();
   const [opportunities, setOpportunities] = useState([]);
   const [groups, setGroups] = useState([]);
   const [filter, setFilter] = useState('24h');
+  const [webhookStats, setWebhookStats] = useState({ total_today: 0, total_groups: 0, total_monitored: 0, total_processed: 0 });
+  const [showWebhookTooltip, setShowWebhookTooltip] = useState(false);
   const navigate = useNavigate();
+
+  const loadWebhookStats = () => {
+    getWebhookStats()
+      .then((data) => setWebhookStats(data))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     getOpportunities()
@@ -19,7 +27,13 @@ export default function Dashboard() {
     getGroups()
       .then((data) => setGroups(Array.isArray(data) ? data : []))
       .catch(() => {});
+    loadWebhookStats();
   }, []);
+
+  // Refresh stats when new webhook events arrive via WebSocket
+  useEffect(() => {
+    if (webhookCounter > 0) loadWebhookStats();
+  }, [webhookCounter]);
 
   // Merge WS opportunities
   const allOpportunities = [...newOpportunities, ...opportunities];
@@ -113,18 +127,50 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Stat 4 - Response */}
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+          {/* Stat 4 - Webhooks */}
+          <div
+            className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md relative cursor-default"
+            onMouseEnter={() => setShowWebhookTooltip(true)}
+            onMouseLeave={() => setShowWebhookTooltip(false)}
+          >
             <div className="flex items-center justify-between">
-              <span className="material-symbols-outlined rounded-lg bg-purple-50 p-2 text-purple-500">reply_all</span>
-              <div className="h-6 w-16 bg-gradient-to-r from-purple-100 to-purple-500/20 [clip-path:polygon(0%_80%,20%_75%,40%_70%,60%_65%,80%_60%,100%_55%,100%_100%,0%_100%)]"></div>
+              <span className="material-symbols-outlined rounded-lg bg-purple-50 p-2 text-purple-500">webhook</span>
+              {webhookCounter > 0 && (
+                <span className="size-2 bg-green-500 rounded-full animate-pulse" title="Live"></span>
+              )}
             </div>
             <div>
-              <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-text-secondary">Taux de Reponse</p>
+              <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-text-secondary">Webhooks (aujourd'hui)</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-text-primary leading-none">{stats.responseRate}%</span>
+                <span className="text-2xl font-bold text-text-primary leading-none">{webhookStats.total_today}</span>
               </div>
             </div>
+
+            {/* Tooltip on hover */}
+            {showWebhookTooltip && (
+              <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-slate-900 text-white rounded-xl shadow-2xl p-5 text-sm space-y-3 min-w-[280px]">
+                <div className="absolute -top-2 left-6 w-4 h-4 bg-slate-900 rotate-45 rounded-sm"></div>
+                <h4 className="font-bold text-xs uppercase tracking-widest text-slate-400 mb-3">Detail des webhooks du jour</h4>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-300">Total (tous types)</span>
+                  <span className="font-mono font-bold text-white">{webhookStats.total_today}</span>
+                </div>
+                <div className="border-t border-slate-700"></div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-300">Messages groupes (@g.us)</span>
+                  <span className="font-mono font-bold text-blue-400">{webhookStats.total_groups}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-300">Groupes surveilles</span>
+                  <span className="font-mono font-bold text-primary">{webhookStats.total_monitored}</span>
+                </div>
+                <div className="border-t border-slate-700"></div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-300">Messages traites</span>
+                  <span className="font-mono font-bold text-green-400">{webhookStats.total_processed}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

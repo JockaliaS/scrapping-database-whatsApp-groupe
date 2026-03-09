@@ -2,6 +2,7 @@ use axum::{
     body::Bytes,
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
+    Json,
 };
 use uuid::Uuid;
 
@@ -11,6 +12,55 @@ use crate::models::profile::Profile;
 use crate::services::hub_spoke::verify_hub_spoke;
 use crate::services::matching::fast_keyword_filter;
 use crate::AppState;
+
+/// GET /api/webhook-stats — returns today's webhook counters for the authenticated user
+pub async fn get_webhook_stats(
+    State(state): State<AppState>,
+    user_id: Uuid,
+) -> Result<Json<serde_json::Value>, AppError> {
+    // Total webhooks today (all events, all sources)
+    let total_today: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM webhook_events WHERE user_id = $1 AND created_at >= CURRENT_DATE"
+    )
+    .bind(user_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+
+    // Total group messages today (@g.us)
+    let total_groups: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM webhook_events WHERE user_id = $1 AND created_at >= CURRENT_DATE AND is_group = true"
+    )
+    .bind(user_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+
+    // Total for monitored groups only
+    let total_monitored: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM webhook_events WHERE user_id = $1 AND created_at >= CURRENT_DATE AND is_monitored_group = true"
+    )
+    .bind(user_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+
+    // Total actually processed (content was present and went through pipeline)
+    let total_processed: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM webhook_events WHERE user_id = $1 AND created_at >= CURRENT_DATE AND is_monitored_group = true AND processed = true"
+    )
+    .bind(user_id)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(0);
+
+    Ok(Json(serde_json::json!({
+        "total_today": total_today,
+        "total_groups": total_groups,
+        "total_monitored": total_monitored,
+        "total_processed": total_processed,
+    })))
+}
 
 /// Shared matching pipeline used by both hub_spoke_webhook and per-user webhook.
 /// Given a group_id, message content, sender info, and group name,
@@ -265,6 +315,16 @@ pub async fn hub_spoke_webhook(
 
     tracing::info!("[Webhook] hub_spoke: group={} content_len={}", payload.group_id, payload.content.len());
 
+    // Record hub-spoke webhook event (no specific user_id for hub-spoke, will be resolved in process_message)
+    let _ = sqlx::query(
+        r#"INSERT INTO webhook_events (id, event_type, source, remote_jid, is_group, processed)
+           VALUES ($1, 'messages.upsert', 'hub-spoke', $2, true, true)"#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(&payload.group_id)
+    .execute(&state.db)
+    .await;
+
     process_message(
         &state,
         &payload.group_id,
@@ -339,6 +399,47 @@ pub async fn per_user_webhook(
 }
 
 
+/// Record a webhook event in the database and broadcast counter update via WebSocket
+async fn record_webhook_event(
+    state: &AppState,
+    user_id: Uuid,
+    event_type: &str,
+    source: &str,
+    remote_jid: &str,
+    is_group: bool,
+    is_monitored: bool,
+    group_db_id: Option<Uuid>,
+    processed: bool,
+) {
+    let _ = sqlx::query(
+        r#"INSERT INTO webhook_events (id, user_id, event_type, source, remote_jid, is_group, is_monitored_group, group_db_id, processed)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"#,
+    )
+    .bind(Uuid::new_v4())
+    .bind(user_id)
+    .bind(event_type)
+    .bind(source)
+    .bind(remote_jid)
+    .bind(is_group)
+    .bind(is_monitored)
+    .bind(group_db_id)
+    .bind(processed)
+    .execute(&state.db)
+    .await;
+
+    // Broadcast live counter update via WebSocket
+    let ws_msg = serde_json::json!({
+        "type": "webhook_event",
+        "data": {
+            "event_type": event_type,
+            "is_group": is_group,
+            "is_monitored": is_monitored,
+            "processed": processed,
+        }
+    });
+    state.ws_manager.broadcast_to_user(user_id, &ws_msg.to_string()).await;
+}
+
 /// Shared handler for Evolution API events (used by both global and per-user webhooks)
 async fn handle_evolution_event(
     state: &AppState,
@@ -354,8 +455,29 @@ async fn handle_evolution_event(
 
             tracing::info!("[Webhook] messages.upsert user_id={} instance={} remoteJid={}", user_id, instance_name, remote_jid);
 
+            let is_group = remote_jid.ends_with("@g.us");
+
+            // Check if this group is monitored + get group_db_id
+            let monitored_info = if is_group {
+                sqlx::query_as::<_, (Uuid, bool)>(
+                    "SELECT id, is_monitored FROM groups WHERE whatsapp_group_id = $1 AND user_id = $2"
+                )
+                .bind(remote_jid)
+                .bind(user_id)
+                .fetch_optional(&state.db)
+                .await
+                .ok()
+                .flatten()
+            } else {
+                None
+            };
+
+            let is_monitored = monitored_info.as_ref().map(|m| m.1).unwrap_or(false);
+            let group_db_id = monitored_info.as_ref().map(|m| m.0);
+
             // Only process group messages
-            if !remote_jid.ends_with("@g.us") {
+            if !is_group {
+                record_webhook_event(state, user_id, event, "evolution", remote_jid, false, false, None, false).await;
                 tracing::debug!("[Webhook] messages.upsert: skipping non-group message (jid={})", remote_jid);
                 return Ok(StatusCode::OK);
             }
@@ -367,9 +489,13 @@ async fn handle_evolution_event(
                 .unwrap_or("");
 
             if content.trim().is_empty() {
+                record_webhook_event(state, user_id, event, "evolution", remote_jid, true, is_monitored, group_db_id, false).await;
                 tracing::debug!("[Webhook] messages.upsert: empty content, skipping");
                 return Ok(StatusCode::OK);
             }
+
+            // Record webhook event (processed = true since we have content to process)
+            record_webhook_event(state, user_id, event, "evolution", remote_jid, true, is_monitored, group_db_id, true).await;
 
             // Extract sender
             let sender_jid = data["key"]["participant"]
@@ -402,6 +528,7 @@ async fn handle_evolution_event(
         }
 
         "connection.update" => {
+            record_webhook_event(state, user_id, event, "evolution", "", false, false, None, true).await;
             let data = &payload["data"];
             let state_str = data["state"].as_str()
                 .or_else(|| data["instance"]["state"].as_str())
@@ -436,6 +563,7 @@ async fn handle_evolution_event(
         }
 
         "qrcode.updated" => {
+            record_webhook_event(state, user_id, event, "evolution", "", false, false, None, true).await;
             let data = &payload["data"];
             let qr_base64 = data["qrcode"]["base64"].as_str()
                 .or_else(|| data["qrcode"].as_str())
@@ -462,6 +590,7 @@ async fn handle_evolution_event(
         }
 
         _ => {
+            record_webhook_event(state, user_id, event, "evolution", "", false, false, None, false).await;
             tracing::debug!("[Webhook] unhandled event '{}' for instance '{}' user_id={}", event, instance_name, user_id);
         }
     }

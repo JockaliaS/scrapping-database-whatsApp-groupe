@@ -124,6 +124,23 @@ CREATE INDEX idx_opportunities_status ON opportunities(status);
 CREATE INDEX idx_groups_user_id ON groups(user_id);
 CREATE INDEX idx_contacts_phone ON contacts(phone);
 
+-- Webhook events tracking
+CREATE TABLE webhook_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  event_type VARCHAR(100) NOT NULL,
+  source VARCHAR(50) NOT NULL DEFAULT 'evolution',
+  remote_jid VARCHAR(255),
+  is_group BOOLEAN NOT NULL DEFAULT false,
+  is_monitored_group BOOLEAN NOT NULL DEFAULT false,
+  group_db_id UUID REFERENCES groups(id) ON DELETE SET NULL,
+  processed BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_webhook_events_created_at ON webhook_events(created_at DESC);
+CREATE INDEX idx_webhook_events_user_id ON webhook_events(user_id, created_at DESC);
+
 -- Default system config
 INSERT INTO system_config (key, value) VALUES
   ('default_alert_template', E'\U0001F3AF *RADAR - Nouvelle opportunit\u00e9*\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\U0001F4CA Score : *{{score}}%*\n\U0001F464 Contact : {{contact}} ({{phone}})\n\U0001F4AC Groupe : _{{group}}_\n\U0001F550 {{date}}\n\n\U0001F4DD *Message :*\n{{message}}\n\n\U0001F4A1 *Suggestion de r\u00e9ponse :*\n{{suggestion}}\n\n\U0001F517 Voir dans Radar : {{link}}\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501'),

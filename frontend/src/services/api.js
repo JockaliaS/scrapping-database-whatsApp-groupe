@@ -113,6 +113,9 @@ export const createHubSpokeToken = () =>
 export const deleteHubSpokeToken = (id) =>
   request(`/api/admin/hub-spoke-tokens/${id}`, { method: 'DELETE' });
 
+// Webhook Stats
+export const getWebhookStats = () => request('/api/webhook-stats');
+
 // Health
 export const getHealth = () =>
   fetch(`${API_URL}/health`).then((r) => r.json());
