@@ -58,22 +58,50 @@ pub async fn list_groups(
                         let size = g["size"].as_i64().unwrap_or(0) as i32;
                         tracing::debug!("[Groups] group[{}]: id={} name={} size={}", i, gid, name, size);
 
-                        let result = sqlx::query(
-                            r#"INSERT INTO groups (id, user_id, whatsapp_group_id, name, member_count)
-                               VALUES ($1, $2, $3, $4, $5)
-                               ON CONFLICT (user_id, whatsapp_group_id) DO UPDATE
-                               SET name = $4, member_count = $5"#,
+                        // Check if group already exists to avoid resetting is_monitored
+                        let existing = sqlx::query_scalar::<_, i64>(
+                            "SELECT COUNT(*) FROM groups WHERE user_id = $1 AND whatsapp_group_id = $2"
                         )
-                        .bind(Uuid::new_v4())
                         .bind(user_id)
                         .bind(gid)
-                        .bind(name)
-                        .bind(size)
-                        .execute(&state.db)
-                        .await;
+                        .fetch_one(&state.db)
+                        .await
+                        .unwrap_or(0);
 
-                        if let Err(e) = result {
-                            tracing::error!("[Groups] DB upsert failed for group gid={}: {}", gid, e);
+                        if existing > 0 {
+                            // Update name/size only, preserve is_monitored
+                            let result = sqlx::query(
+                                "UPDATE groups SET name = $1, member_count = $2 WHERE user_id = $3 AND whatsapp_group_id = $4"
+                            )
+                            .bind(name)
+                            .bind(size)
+                            .bind(user_id)
+                            .bind(gid)
+                            .execute(&state.db)
+                            .await;
+
+                            if let Err(e) = result {
+                                tracing::error!("[Groups] DB update failed for group gid={}: {}", gid, e);
+                            }
+                        } else {
+                            // New group — insert with is_monitored = false
+                            let result = sqlx::query(
+                                r#"INSERT INTO groups (id, user_id, whatsapp_group_id, name, member_count)
+                                   VALUES ($1, $2, $3, $4, $5)"#,
+                            )
+                            .bind(Uuid::new_v4())
+                            .bind(user_id)
+                            .bind(gid)
+                            .bind(name)
+                            .bind(size)
+                            .execute(&state.db)
+                            .await;
+
+                            if let Err(e) = result {
+                                tracing::error!("[Groups] DB insert failed for group gid={}: {}", gid, e);
+                            } else {
+                                tracing::info!("[Groups] New group added: gid={} name={}", gid, name);
+                            }
                         }
                     }
                 }
