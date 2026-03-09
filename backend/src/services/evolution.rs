@@ -219,11 +219,25 @@ impl EvolutionService {
             anyhow::bail!("Evolution API {}: failed to fetch messages", status.as_u16());
         }
 
-        let messages: Vec<Value> = serde_json::from_str(&raw).unwrap_or_else(|e| {
+        // Evolution API returns: {"messages": {"total": N, "records": [...]}}
+        let parsed: Value = serde_json::from_str(&raw).unwrap_or_else(|e| {
             tracing::error!("[Evolution] fetch_messages JSON parse error: {} — raw: {}", e, &raw[..raw.len().min(300)]);
-            vec![]
+            json!({})
         });
-        tracing::info!("[Evolution] fetch_messages -> {} messages", messages.len());
+
+        let messages = if let Some(records) = parsed["messages"]["records"].as_array() {
+            records.clone()
+        } else if let Some(arr) = parsed.as_array() {
+            // Fallback: direct array response
+            arr.clone()
+        } else {
+            tracing::warn!("[Evolution] fetch_messages: unexpected response structure, keys: {:?}",
+                parsed.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+            vec![]
+        };
+
+        let total = parsed["messages"]["total"].as_i64().unwrap_or(0);
+        tracing::info!("[Evolution] fetch_messages -> {} records (total in API: {})", messages.len(), total);
         Ok(messages)
     }
 
