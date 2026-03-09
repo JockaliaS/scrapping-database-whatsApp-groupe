@@ -23,6 +23,8 @@ pub struct Profile {
 
 #[derive(Debug, Deserialize)]
 pub struct ProfileUpdate {
+    pub full_name: Option<String>,
+    pub email: Option<String>,
     pub raw_text: Option<String>,
     pub keywords: Option<Vec<String>>,
     pub anti_keywords: Option<Vec<String>>,

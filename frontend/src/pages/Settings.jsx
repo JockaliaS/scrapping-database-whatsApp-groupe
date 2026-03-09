@@ -19,8 +19,8 @@ export default function Settings() {
   const { user } = useAuth();
 
   // Profile
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
 
   // AI Profile
   const [rawText, setRawText] = useState('');
@@ -31,8 +31,11 @@ export default function Settings() {
   // WhatsApp
   const [waStatus, setWaStatus] = useState('disconnected');
   const [waNumber, setWaNumber] = useState('');
+  const [waInstanceName, setWaInstanceName] = useState('');
+  const [waWebhookUrl, setWaWebhookUrl] = useState('');
   const [alertPhone, setAlertPhone] = useState('');
   const [qrCode, setQrCode] = useState('');
+  const [webhookCopied, setWebhookCopied] = useState(false);
 
   // Alert Template
   const [alertTemplate, setAlertTemplate] = useState('');
@@ -48,15 +51,17 @@ export default function Settings() {
   useEffect(() => {
     getProfile()
       .then((data) => {
-        setName(data.name || '');
+        // User fields (merged by backend)
+        setName(data.full_name || '');
         setEmail(data.email || '');
+        // Profile fields
         setRawText(data.raw_text || '');
         setKeywords(data.keywords || []);
         setIntentions(data.intentions || []);
-        setScoreThreshold(data.score_threshold || 75);
-        setAlertPhone(data.alert_phone || '');
+        setScoreThreshold(data.min_score || 75);
+        setAlertPhone(data.alert_number || '');
         setAlertTemplate(data.alert_template || '');
-        setCollaborativeEnabled(data.collaborative || false);
+        setCollaborativeEnabled(data.sharing_enabled || false);
       })
       .catch(() => {});
 
@@ -64,6 +69,8 @@ export default function Settings() {
       .then((data) => {
         setWaStatus(data.status || 'disconnected');
         setWaNumber(data.connected_number || '');
+        setWaInstanceName(data.instance_name || '');
+        setWaWebhookUrl(data.webhook_url || '');
       })
       .catch(() => {});
 
@@ -75,7 +82,7 @@ export default function Settings() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      await updateProfile({ name, email });
+      await updateProfile({ full_name: name, email });
     } catch {
       // ignore
     }
@@ -88,10 +95,11 @@ export default function Settings() {
       await updateProfile({
         keywords,
         intentions,
-        score_threshold: scoreThreshold,
+        min_score: scoreThreshold,
         raw_text: rawText,
-        alert_phone: alertPhone,
+        alert_number: alertPhone,
         alert_template: alertTemplate,
+        sharing_enabled: collaborativeEnabled,
       });
     } catch {
       // ignore
@@ -110,17 +118,18 @@ export default function Settings() {
     }
   };
 
-  const handleToggleGroup = async (id) => {
-    try {
-      await toggleGroup(id);
+  const handleToggleGroup = (id) => {
+    setGroups((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, is_monitored: !g.is_monitored } : g))
+    );
+    toggleGroup(id).catch(() => {
       setGroups((prev) =>
         prev.map((g) => (g.id === id ? { ...g, is_monitored: !g.is_monitored } : g))
       );
-    } catch {
-      // ignore
-    }
+    });
   };
 
+  const monitoredCount = groups.filter(g => g.is_monitored).length;
   const templateVars = ['{{score}}', '{{contact}}', '{{message}}', '{{groupe}}', '{{lien}}'];
 
   return (
@@ -239,21 +248,54 @@ export default function Settings() {
               </div>
               <p className="text-sm text-slate-500 mb-4">Scannez pour reconnecter votre compte</p>
             </div>
-            <div className="bg-white p-6 rounded-xl border border-slate-200 space-y-6">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 space-y-5">
               <div>
-                <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Numero connecte</span>
+                <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Statut</span>
                 <div className="flex items-center gap-3 mt-2">
-                  <span className="font-mono text-lg">{waNumber || 'Non connecte'}</span>
-                  <span className={`flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full border ${
-                    waStatus === 'connected'
+                  <span className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full border ${
+                    waStatus === 'connected' || waStatus === 'open'
                       ? 'bg-primary/10 text-primary border-primary/20'
                       : 'bg-slate-100 text-slate-400 border-slate-200'
                   }`}>
-                    {waStatus === 'connected' && <span className="size-1.5 bg-primary rounded-full animate-pulse"></span>}
-                    {waStatus === 'connected' ? 'CONNECTE' : 'DECONNECTE'}
+                    {(waStatus === 'connected' || waStatus === 'open') && <span className="size-1.5 bg-primary rounded-full animate-pulse"></span>}
+                    {waStatus === 'connected' || waStatus === 'open' ? 'CONNECTE' : waStatus.toUpperCase()}
                   </span>
                 </div>
               </div>
+              {waInstanceName && (
+                <div>
+                  <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Instance</span>
+                  <p className="mt-1 font-mono text-sm text-slate-700">{waInstanceName}</p>
+                </div>
+              )}
+              <div>
+                <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Numero connecte</span>
+                <p className="mt-1 font-mono text-lg">{waNumber || 'Non renseigne'}</p>
+              </div>
+              {waWebhookUrl && (
+                <div>
+                  <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Webhook URL</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 bg-slate-50 rounded-lg border border-slate-200 px-3 py-2 text-xs font-mono text-slate-700 break-all select-all">
+                      {waWebhookUrl}
+                    </code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(waWebhookUrl);
+                        setWebhookCopied(true);
+                        setTimeout(() => setWebhookCopied(false), 2000);
+                      }}
+                      className={`shrink-0 p-2 rounded-lg text-xs font-bold transition-all ${
+                        webhookCopied
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-sm">{webhookCopied ? 'done' : 'content_copy'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
               <label className="flex flex-col gap-2">
                 <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Numero pour alertes (WhatsApp)</span>
                 <input
@@ -312,11 +354,15 @@ export default function Settings() {
           <div className="flex items-center gap-3 mb-6">
             <span className="material-symbols-outlined text-primary">groups</span>
             <h2 className="text-2xl font-black tracking-tight">Mes Groupes</h2>
+            <div className="flex items-center gap-3 ml-auto">
+              <span className="text-sm text-slate-500">{groups.length} groupe{groups.length > 1 ? 's' : ''}</span>
+              <span className="text-sm font-bold text-primary">{monitoredCount} en ecoute</span>
+            </div>
           </div>
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-96 overflow-y-auto">
               <table className="w-full text-left">
-                <thead className="bg-slate-50 text-xs text-slate-500 uppercase font-semibold">
+                <thead className="bg-slate-50 text-xs text-slate-500 uppercase font-semibold sticky top-0">
                   <tr>
                     <th className="px-6 py-4">Groupe WhatsApp</th>
                     <th className="px-6 py-4 text-center">Monitoring</th>
@@ -325,8 +371,8 @@ export default function Settings() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {groups.map((group) => (
-                    <tr key={group.id}>
-                      <td className="px-6 py-4 font-medium">{group.name}</td>
+                    <tr key={group.id} className={group.is_monitored ? 'bg-primary/5' : ''}>
+                      <td className="px-6 py-4 font-medium">{group.name || '(sans nom)'}</td>
                       <td className="px-6 py-4 text-center">
                         <input
                           type="checkbox"

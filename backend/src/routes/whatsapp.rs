@@ -184,16 +184,16 @@ pub async fn get_status(
 ) -> Result<Json<serde_json::Value>, AppError> {
     tracing::debug!("[WhatsApp] get_status user_id={}", user_id);
 
-    let conn = sqlx::query_as::<_, (String, String, Option<String>)>(
-        "SELECT instance_name, status, connected_number FROM whatsapp_connections WHERE user_id = $1"
+    let conn = sqlx::query_as::<_, (String, String, Option<String>, Option<String>)>(
+        "SELECT instance_name, status, connected_number, webhook_url FROM whatsapp_connections WHERE user_id = $1"
     )
     .bind(user_id)
     .fetch_optional(&state.db)
     .await?;
 
     match conn {
-        Some((instance, status, number)) => {
-            tracing::info!("[WhatsApp] get_status: user_id={} instance={} db_status={} number={:?}", user_id, instance, status, number);
+        Some((instance, status, number, webhook_url)) => {
+            tracing::info!("[WhatsApp] get_status: user_id={} instance={} db_status={} number={:?} webhook_url={:?}", user_id, instance, status, number, webhook_url);
 
             // Check live status from Evolution API
             let live_status = if let Some(evolution) = &state.evolution {
@@ -216,7 +216,8 @@ pub async fn get_status(
             Ok(Json(serde_json::json!({
                 "status": live_status.unwrap_or(status),
                 "connected_number": number,
-                "instance_name": instance
+                "instance_name": instance,
+                "webhook_url": webhook_url
             })))
         }
         None => {
