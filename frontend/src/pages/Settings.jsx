@@ -12,6 +12,7 @@ import {
   disconnectWhatsApp,
   getGroups,
   toggleGroup,
+  testAlert,
 } from '../services/api';
 
 export default function Settings() {
@@ -47,6 +48,9 @@ export default function Settings() {
   const [collaborativeEnabled, setCollaborativeEnabled] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [savingWa, setSavingWa] = useState(false);
+  const [testingAlert, setTestingAlert] = useState(false);
+  const [testAlertResult, setTestAlertResult] = useState(null);
 
   useEffect(() => {
     getProfile()
@@ -309,6 +313,55 @@ export default function Settings() {
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3">
                 <span className="material-symbols-outlined text-amber-500 text-sm">warning</span>
                 <p className="text-xs text-amber-700">Ce numero recevra les notifications de detection d'opportunites en temps reel.</p>
+              </div>
+              {testAlertResult && (
+                <div className={`p-3 rounded-lg flex gap-3 ${testAlertResult.ok ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  <span className={`material-symbols-outlined text-sm ${testAlertResult.ok ? 'text-green-500' : 'text-red-500'}`}>
+                    {testAlertResult.ok ? 'check_circle' : 'error'}
+                  </span>
+                  <p className={`text-xs ${testAlertResult.ok ? 'text-green-700' : 'text-red-700'}`}>{testAlertResult.message}</p>
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={async () => {
+                    setSavingWa(true);
+                    try {
+                      await updateProfile({ alert_number: alertPhone });
+                      setTestAlertResult({ ok: true, message: 'Numero sauvegarde.' });
+                      setTimeout(() => setTestAlertResult(null), 3000);
+                    } catch (e) {
+                      setTestAlertResult({ ok: false, message: e.message });
+                    }
+                    setSavingWa(false);
+                  }}
+                  disabled={savingWa}
+                  className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-2.5 px-6 rounded-lg transition-all shadow-md shadow-primary/20 disabled:opacity-50"
+                >
+                  {savingWa ? 'Sauvegarde...' : 'Sauvegarder'}
+                </button>
+                <button
+                  onClick={async () => {
+                    setTestingAlert(true);
+                    setTestAlertResult(null);
+                    try {
+                      await updateProfile({ alert_number: alertPhone });
+                      const result = await testAlert();
+                      setTestAlertResult({ ok: true, message: result.message || 'Alerte envoyee avec succes !' });
+                    } catch (e) {
+                      setTestAlertResult({ ok: false, message: e.message });
+                    }
+                    setTestingAlert(false);
+                  }}
+                  disabled={testingAlert || !alertPhone}
+                  className="flex-1 flex items-center justify-center gap-2 border-2 border-primary text-primary font-bold py-2.5 px-6 rounded-lg hover:bg-primary/5 transition-all disabled:opacity-50"
+                >
+                  {testingAlert ? (
+                    <><span className="animate-spin material-symbols-outlined text-sm">progress_activity</span> Envoi...</>
+                  ) : (
+                    <><span className="material-symbols-outlined text-sm">send</span> Tester l'alerte</>
+                  )}
+                </button>
               </div>
             </div>
           </div>

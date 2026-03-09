@@ -135,7 +135,8 @@ async fn main() {
         .route("/api/whatsapp/status", get(whatsapp_status))
         .route("/api/whatsapp/disconnect", delete(whatsapp_disconnect))
         .route("/api/whatsapp/connect-existing", post(whatsapp_connect_existing))
-        .route("/api/whatsapp/instances", get(whatsapp_instances));
+        .route("/api/whatsapp/instances", get(whatsapp_instances))
+        .route("/api/whatsapp/test-alert", post(whatsapp_test_alert));
 
     // Admin routes
     let admin_routes = Router::new()
@@ -390,6 +391,14 @@ async fn whatsapp_instances(
 ) -> Result<impl IntoResponse, errors::AppError> {
     let _user_id = extract_user_id(&headers, &state.config.jwt_secret)?;
     routes::whatsapp::list_evolution_instances(State(state)).await.map(|j| j.into_response())
+}
+
+async fn whatsapp_test_alert(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, errors::AppError> {
+    let user_id = extract_user_id(&headers, &state.config.jwt_secret)?;
+    routes::whatsapp::test_alert(State(state), user_id).await.map(|j| j.into_response())
 }
 
 // Admin routes
