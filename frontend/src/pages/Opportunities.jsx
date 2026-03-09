@@ -10,6 +10,13 @@ export default function Opportunities() {
   const [opportunities, setOpportunities] = useState([]);
   const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState('');
+  const [copiedField, setCopiedField] = useState(null);
+
+  const handleCopy = (text, field) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
@@ -240,9 +247,22 @@ export default function Opportunities() {
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
               {/* Message complet */}
               <section className="space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-tighter">
-                  <span className="material-symbols-outlined text-sm">chat_bubble</span>
-                  Message complet
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-tighter">
+                    <span className="material-symbols-outlined text-sm">chat_bubble</span>
+                    Message complet
+                  </div>
+                  <button
+                    onClick={() => handleCopy(selected.message_content, 'message')}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                      copiedField === 'message'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-xs">{copiedField === 'message' ? 'done' : 'content_copy'}</span>
+                    {copiedField === 'message' ? 'Copie !' : 'Copier'}
+                  </button>
                 </div>
                 <div className="bg-slate-50 rounded-2xl rounded-tl-none p-4 relative shadow-sm border border-slate-100">
                   <p className="text-sm text-slate-700 leading-relaxed">{selected.message_content}</p>
@@ -298,6 +318,19 @@ export default function Opportunities() {
                 </div>
               </section>
 
+              {/* Analyse IA — pourquoi ce message est pertinent */}
+              {selected.context_analysis && (
+                <section className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-tighter">
+                    <span className="material-symbols-outlined text-sm">psychology</span>
+                    Pourquoi l'IA a detecte cette opportunite
+                  </div>
+                  <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                    <p className="text-sm text-amber-900 leading-relaxed">{selected.context_analysis}</p>
+                  </div>
+                </section>
+              )}
+
               {/* Reponse suggeree */}
               {selected.suggested_reply && (
                 <section className="space-y-3">
@@ -309,14 +342,15 @@ export default function Opportunities() {
                     <p className="text-sm text-slate-700 leading-relaxed italic">"{selected.suggested_reply}"</p>
                     <div className="mt-4 flex gap-2">
                       <button
-                        onClick={() => navigator.clipboard.writeText(selected.suggested_reply)}
-                        className="flex-1 py-2 bg-primary text-white text-xs font-bold rounded-lg flex items-center justify-center gap-2 hover:opacity-90 transition-all"
+                        onClick={() => handleCopy(selected.suggested_reply, 'reply')}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-2 transition-all ${
+                          copiedField === 'reply'
+                            ? 'bg-green-500 text-white'
+                            : 'bg-primary text-white hover:opacity-90'
+                        }`}
                       >
-                        <span className="material-symbols-outlined text-sm">content_copy</span>
-                        Copier
-                      </button>
-                      <button className="flex-1 py-2 bg-white border border-primary/20 text-primary text-xs font-bold rounded-lg hover:bg-primary/5 transition-all">
-                        Personnaliser
+                        <span className="material-symbols-outlined text-sm">{copiedField === 'reply' ? 'done' : 'content_copy'}</span>
+                        {copiedField === 'reply' ? 'Copie !' : 'Copier la reponse'}
                       </button>
                     </div>
                   </div>
