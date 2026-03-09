@@ -236,10 +236,11 @@ export default function Onboarding() {
         anti_keywords: antiKeywords,
         intentions,
         sector,
-        phone,
-        score_threshold: scoreThreshold,
+        alert_number: phone,
+        min_score: scoreThreshold,
         alert_template: alertTemplate,
         raw_text: rawText,
+        onboarding_complete: true,
       });
     } catch {
       // ignore
