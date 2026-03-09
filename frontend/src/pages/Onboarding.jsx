@@ -43,6 +43,7 @@ export default function Onboarding() {
   const [availableInstances, setAvailableInstances] = useState([]);
   const [loadingInstances, setLoadingInstances] = useState(false);
   const [connectingExisting, setConnectingExisting] = useState(false);
+  const [connectingStep, setConnectingStep] = useState('');
   const [pathBSuccess, setPathBSuccess] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookUrlCopied, setWebhookUrlCopied] = useState(false);
@@ -177,9 +178,20 @@ export default function Onboarding() {
   const handleConnectExisting = async () => {
     if (!existingInstanceName.trim()) return;
     setConnectingExisting(true);
+    setConnectingStep('Verification de l\'instance...');
     setWaError('');
     try {
+      // Simulate progress steps (the backend runs all 4 tests in one call)
+      const stepTimer1 = setTimeout(() => setConnectingStep('Test de connexion WhatsApp...'), 2000);
+      const stepTimer2 = setTimeout(() => setConnectingStep('Recuperation des groupes...'), 5000);
+      const stepTimer3 = setTimeout(() => setConnectingStep('Verification du webhook...'), 9000);
+
       const result = await connectExistingWhatsApp(existingInstanceName.trim());
+
+      clearTimeout(stepTimer1);
+      clearTimeout(stepTimer2);
+      clearTimeout(stepTimer3);
+
       setWaStatus(result.status);
       setWebhookUrl(result.webhook_url || '');
       setConnectionChecks(result.checks || null);
@@ -188,15 +200,19 @@ export default function Onboarding() {
       setWaError(err.message || 'Erreur de connexion');
     } finally {
       setConnectingExisting(false);
+      setConnectingStep('');
     }
   };
 
   // Step 4: Load groups
+  const [loadingGroups, setLoadingGroups] = useState(false);
   useEffect(() => {
     if (step === 4) {
+      setLoadingGroups(true);
       getGroups()
         .then(setGroups)
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setLoadingGroups(false));
     }
   }, [step]);
 
@@ -661,7 +677,7 @@ export default function Onboarding() {
                     {connectingExisting ? (
                       <>
                         <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Connexion...
+                        <span>{connectingStep || 'Connexion...'}</span>
                       </>
                     ) : (
                       <>
@@ -685,7 +701,13 @@ export default function Onboarding() {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-              {groups.length === 0 ? (
+              {loadingGroups ? (
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                  <div className="size-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-slate-600 font-medium">Recuperation des groupes WhatsApp...</p>
+                  <p className="text-slate-400 text-sm">Cela peut prendre quelques secondes</p>
+                </div>
+              ) : groups.length === 0 ? (
                 <p className="text-center text-slate-400 py-8">Aucun groupe detecte. Assurez-vous que WhatsApp est connecte.</p>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto pr-2">

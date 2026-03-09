@@ -25,8 +25,8 @@ async function request(path, options = {}) {
   }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: 'Erreur réseau' }));
-    throw new Error(error.detail || `HTTP ${res.status}`);
+    const error = await res.json().catch(() => ({ error: 'Erreur réseau' }));
+    throw new Error(error.error || error.detail || error.message || `HTTP ${res.status}`);
   }
 
   return res.json();
