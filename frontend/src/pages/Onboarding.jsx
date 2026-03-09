@@ -216,15 +216,17 @@ export default function Onboarding() {
     }
   }, [step]);
 
-  const handleToggleGroup = async (groupId) => {
-    try {
-      await toggleGroup(groupId);
+  const handleToggleGroup = (groupId) => {
+    // Optimistic update — instant UI feedback, API call in background
+    setGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, is_monitored: !g.is_monitored } : g))
+    );
+    // Fire-and-forget API call, revert on error
+    toggleGroup(groupId).catch(() => {
       setGroups((prev) =>
         prev.map((g) => (g.id === groupId ? { ...g, is_monitored: !g.is_monitored } : g))
       );
-    } catch {
-      // ignore
-    }
+    });
   };
 
   const handleFinish = async () => {
@@ -698,6 +700,19 @@ export default function Onboarding() {
             <div className="space-y-4 mb-10">
               <h2 className="text-4xl font-extrabold tracking-tight text-slate-900">Etape 4 — Selection des groupes</h2>
               <p className="text-lg text-slate-600 max-w-2xl">Choisissez les groupes WhatsApp que Radar doit surveiller.</p>
+
+              {!loadingGroups && groups.length > 0 && (
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium">
+                    <span className="material-symbols-outlined text-base">groups</span>
+                    {groups.length} groupe{groups.length > 1 ? 's' : ''} disponible{groups.length > 1 ? 's' : ''}
+                  </span>
+                  <span className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-lg text-sm font-bold">
+                    <span className="material-symbols-outlined text-base">hearing</span>
+                    {groups.filter(g => g.is_monitored).length} en ecoute
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
@@ -710,20 +725,24 @@ export default function Onboarding() {
               ) : groups.length === 0 ? (
                 <p className="text-center text-slate-400 py-8">Aucun groupe detecte. Assurez-vous que WhatsApp est connecte.</p>
               ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                <div className="space-y-2 max-h-[32rem] overflow-y-auto pr-2">
                   {groups.map((group) => (
                     <label
                       key={group.id}
-                      className="flex items-center p-3 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors"
+                      className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
+                        group.is_monitored
+                          ? 'border-primary/30 bg-primary/5 hover:bg-primary/10'
+                          : 'border-slate-100 hover:bg-slate-50'
+                      }`}
                     >
                       <input
                         type="checkbox"
                         checked={group.is_monitored}
                         onChange={() => handleToggleGroup(group.id)}
-                        className="rounded text-primary focus:ring-primary h-5 w-5 mr-3"
+                        className="rounded text-primary focus:ring-primary h-5 w-5 mr-3 shrink-0"
                       />
-                      <span className="flex-1 font-medium text-slate-800">{group.name}</span>
-                      <span className="text-xs mono-text bg-slate-100 px-2 py-1 rounded">
+                      <span className={`flex-1 font-medium ${group.is_monitored ? 'text-primary' : 'text-slate-800'}`}>{group.name || '(sans nom)'}</span>
+                      <span className="text-xs mono-text bg-slate-100 px-2 py-1 rounded shrink-0">
                         {group.member_count || 0} membres
                       </span>
                     </label>
