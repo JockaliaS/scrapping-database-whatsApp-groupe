@@ -28,6 +28,7 @@ use crate::routes::auth::Claims;
 use crate::routes::scan::ScanStore;
 use crate::services::evolution::EvolutionService;
 use crate::services::gemini::GeminiService;
+use crate::services::slack::SlackService;
 use crate::ws::manager::WsManager;
 
 #[derive(Clone)]
@@ -40,6 +41,7 @@ pub struct AppState {
     pub ws_manager: WsManager,
     pub scans: ScanStore,
     pub start_time: Instant,
+    pub slack: SlackService,
 }
 
 #[tokio::main]
@@ -103,6 +105,7 @@ async fn main() {
         ws_manager: WsManager::new(),
         scans: routes::scan::new_scan_store(),
         start_time: Instant::now(),
+        slack: SlackService::new(),
     };
 
     let cors = CorsLayer::new()
@@ -116,7 +119,9 @@ async fn main() {
         .route("/auth/login", post(routes::auth::login))
         .route("/auth/register", post(routes::auth::register))
         .route("/webhook/hub-spoke", post(routes::webhook::hub_spoke_webhook))
-        .route("/webhook/whatsapp/:user_id", post(routes::webhook::per_user_webhook));
+        .route("/webhook/whatsapp/:user_id", post(routes::webhook::per_user_webhook))
+        .route("/webhook/slack/events", post(routes::slack::slack_events_webhook))
+        .route("/auth/slack/callback", get(routes::slack::oauth_callback));
 
     // Authenticated routes
     let api_routes = Router::new()
@@ -138,7 +143,14 @@ async fn main() {
         .route("/api/whatsapp/connect-existing", post(whatsapp_connect_existing))
         .route("/api/whatsapp/instances", get(whatsapp_instances))
         .route("/api/whatsapp/test-alert", post(whatsapp_test_alert))
-        .route("/api/webhook-stats", get(webhook_stats));
+        .route("/api/webhook-stats", get(webhook_stats))
+        .route("/api/slack/auth-url", get(slack_auth_url))
+        .route("/api/slack/status", get(slack_status))
+        .route("/api/slack/disconnect", delete(slack_disconnect))
+        .route("/api/slack/channels", get(slack_channels))
+        .route("/api/slack/channels/sync", post(slack_sync_channels))
+        .route("/api/slack/channels/:channel_id/toggle", put(slack_toggle_channel))
+        .route("/api/slack/test-alert", post(slack_test_alert));
 
     // Admin routes
     let admin_routes = Router::new()
@@ -496,6 +508,65 @@ async fn admin_create_group(
 ) -> Result<impl IntoResponse, errors::AppError> {
     let admin_id = extract_admin_id(&headers, &state.config.jwt_secret)?;
     routes::admin::create_group(State(state), admin_id, body).await.map(|(s, j)| (s, j).into_response())
+}
+
+// --- Slack route handlers ---
+
+async fn slack_auth_url(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, errors::AppError> {
+    let user_id = extract_user_id(&headers, &state.config.jwt_secret)?;
+    routes::slack::get_auth_url(State(state), user_id).await.map(|j| j.into_response())
+}
+
+async fn slack_status(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, errors::AppError> {
+    let user_id = extract_user_id(&headers, &state.config.jwt_secret)?;
+    routes::slack::get_status(State(state), user_id).await.map(|j| j.into_response())
+}
+
+async fn slack_disconnect(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, errors::AppError> {
+    let user_id = extract_user_id(&headers, &state.config.jwt_secret)?;
+    routes::slack::disconnect(State(state), user_id).await.map(|s| s.into_response())
+}
+
+async fn slack_channels(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, errors::AppError> {
+    let user_id = extract_user_id(&headers, &state.config.jwt_secret)?;
+    routes::slack::list_channels(State(state), user_id).await.map(|j| j.into_response())
+}
+
+async fn slack_sync_channels(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, errors::AppError> {
+    let user_id = extract_user_id(&headers, &state.config.jwt_secret)?;
+    routes::slack::sync_channels(State(state), user_id).await.map(|j| j.into_response())
+}
+
+async fn slack_toggle_channel(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    axum::extract::Path(channel_id): axum::extract::Path<String>,
+) -> Result<impl IntoResponse, errors::AppError> {
+    let user_id = extract_user_id(&headers, &state.config.jwt_secret)?;
+    routes::slack::toggle_channel(State(state), user_id, channel_id).await.map(|j| j.into_response())
+}
+
+async fn slack_test_alert(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, errors::AppError> {
+    let user_id = extract_user_id(&headers, &state.config.jwt_secret)?;
+    routes::slack::test_alert(State(state), user_id).await.map(|j| j.into_response())
 }
 
 // WebSocket handler

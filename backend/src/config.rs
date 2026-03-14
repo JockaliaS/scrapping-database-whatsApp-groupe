@@ -17,6 +17,8 @@ pub struct Config {
     pub port: u16,
     pub admin_email: String,
     pub admin_password: String,
+    pub slack_client_id: Option<String>,
+    pub slack_client_secret: Option<String>,
 }
 
 impl Config {
@@ -49,6 +51,8 @@ impl Config {
                 .unwrap_or_else(|_| "admin@radar.jockaliaservices.fr".into()),
             admin_password: env::var("ADMIN_PASSWORD")
                 .unwrap_or_else(|_| "Radar@2026!".into()),
+            slack_client_id: env::var("SLACK_CLIENT_ID").ok(),
+            slack_client_secret: env::var("SLACK_CLIENT_SECRET").ok(),
         }
     }
 }

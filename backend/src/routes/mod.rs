@@ -7,3 +7,4 @@ pub mod webhook;
 pub mod whatsapp;
 pub mod admin;
 pub mod health;
+pub mod slack;

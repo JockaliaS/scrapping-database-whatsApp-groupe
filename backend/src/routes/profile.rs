@@ -81,6 +81,7 @@ pub async fn update_profile(
             alert_template = COALESCE($9, alert_template),
             sharing_enabled = COALESCE($10, sharing_enabled),
             onboarding_complete = COALESCE($11, onboarding_complete),
+            slack_webhook_url = COALESCE($12, slack_webhook_url),
             updated_at = NOW()
            WHERE user_id = $1
            RETURNING *"#,
@@ -96,6 +97,7 @@ pub async fn update_profile(
     .bind(&req.alert_template)
     .bind(req.sharing_enabled)
     .bind(req.onboarding_complete)
+    .bind(&req.slack_webhook_url)
     .fetch_one(&state.db)
     .await?;
 

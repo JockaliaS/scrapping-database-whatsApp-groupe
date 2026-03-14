@@ -1,5 +1,6 @@
 use crate::models::opportunity::Opportunity;
 use crate::services::evolution::EvolutionService;
+use crate::services::slack::SlackService;
 use chrono::Utc;
 
 pub struct AlertService;
@@ -54,6 +55,35 @@ impl AlertService {
         );
 
         evolution.send_message(instance_name, alert_number, &text).await?;
+        Ok(())
+    }
+
+    /// Send an opportunity alert to a Slack Incoming Webhook.
+    pub async fn send_slack_alert(
+        slack: &SlackService,
+        webhook_url: &str,
+        opportunity: &Opportunity,
+        contact_name: &str,
+        contact_phone: &str,
+        group_name: &str,
+        message_content: &str,
+        frontend_url: &str,
+    ) -> anyhow::Result<()> {
+        let link = format!("{}/opportunities/{}", frontend_url, opportunity.id);
+
+        slack
+            .send_webhook_rich_alert(
+                webhook_url,
+                opportunity.score,
+                contact_name,
+                contact_phone,
+                group_name,
+                message_content,
+                opportunity.suggested_reply.as_deref().unwrap_or(""),
+                &link,
+            )
+            .await?;
+
         Ok(())
     }
 }

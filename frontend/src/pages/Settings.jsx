@@ -14,6 +14,13 @@ import {
   syncGroups,
   toggleGroup,
   testAlert,
+  getSlackAuthUrl,
+  getSlackStatus,
+  disconnectSlack,
+  getSlackChannels,
+  syncSlackChannels,
+  toggleSlackChannel,
+  testSlackAlert,
 } from '../services/api';
 
 export default function Settings() {
@@ -47,6 +54,18 @@ export default function Settings() {
   const [syncingGroups, setSyncingGroups] = useState(false);
   const [groupSearch, setGroupSearch] = useState('');
 
+  // Slack
+  const [slackConnected, setSlackConnected] = useState(false);
+  const [slackStatus, setSlackStatus] = useState('disconnected');
+  const [slackTeamName, setSlackTeamName] = useState('');
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
+  const [slackChannels, setSlackChannels] = useState([]);
+  const [slackChannelSearch, setSlackChannelSearch] = useState('');
+  const [syncingSlack, setSyncingSlack] = useState(false);
+  const [slackResult, setSlackResult] = useState(null);
+  const [testingSlackAlert, setTestingSlackAlert] = useState(false);
+  const [slackAlertResult, setSlackAlertResult] = useState(null);
+
   // Collaborative
   const [collaborativeEnabled, setCollaborativeEnabled] = useState(false);
 
@@ -69,6 +88,7 @@ export default function Settings() {
         setAlertPhone(data.alert_number || '');
         setAlertTemplate(data.alert_template || '');
         setCollaborativeEnabled(data.sharing_enabled || false);
+        setSlackWebhookUrl(data.slack_webhook_url || '');
       })
       .catch(() => {});
 
@@ -84,6 +104,43 @@ export default function Settings() {
     getGroups()
       .then((data) => setGroups(Array.isArray(data) ? data : []))
       .catch(() => {});
+
+    getSlackStatus()
+      .then((data) => {
+        setSlackConnected(data.connected || false);
+        setSlackStatus(data.status || 'disconnected');
+        setSlackTeamName(data.team_name || '');
+        if (data.connected) {
+          getSlackChannels()
+            .then((channels) => setSlackChannels(Array.isArray(channels) ? channels : []))
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+
+    // Handle OAuth return from Slack
+    const params = new URLSearchParams(window.location.search);
+    const slackParam = params.get('slack');
+    if (slackParam === 'success') {
+      setSlackResult({ ok: true, message: 'Slack connecte avec succes !' });
+      setTimeout(() => setSlackResult(null), 5000);
+      // Clean URL
+      window.history.replaceState({}, '', '/settings');
+      // Reload Slack data
+      getSlackStatus().then((data) => {
+        setSlackConnected(data.connected || false);
+        setSlackTeamName(data.team_name || '');
+        if (data.connected) {
+          getSlackChannels()
+            .then((channels) => setSlackChannels(Array.isArray(channels) ? channels : []))
+            .catch(() => {});
+        }
+      }).catch(() => {});
+    } else if (slackParam === 'denied') {
+      setSlackResult({ ok: false, message: 'Autorisation Slack refusee.' });
+      setTimeout(() => setSlackResult(null), 5000);
+      window.history.replaceState({}, '', '/settings');
+    }
   }, []);
 
   const handleSaveProfile = async () => {
@@ -367,6 +424,253 @@ export default function Settings() {
                 </button>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Ma Connexion Slack */}
+        <section>
+          <div className="flex items-center gap-3 mb-6">
+            <span className="material-symbols-outlined text-primary">tag</span>
+            <h2 className="text-2xl font-black tracking-tight">Ma Connexion Slack</h2>
+          </div>
+          <div className="bg-white p-6 rounded-xl border border-slate-200 space-y-6">
+            {/* Connection status */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Statut</span>
+                <span className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full border ${
+                  slackConnected
+                    ? 'bg-primary/10 text-primary border-primary/20'
+                    : 'bg-slate-100 text-slate-400 border-slate-200'
+                }`}>
+                  {slackConnected && <span className="size-1.5 bg-primary rounded-full animate-pulse"></span>}
+                  {slackConnected ? `CONNECTE - ${slackTeamName}` : 'NON CONNECTE'}
+                </span>
+              </div>
+              {slackConnected && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await disconnectSlack();
+                      setSlackConnected(false);
+                      setSlackStatus('disconnected');
+                      setSlackTeamName('');
+                      setSlackChannels([]);
+                      setSlackResult({ ok: true, message: 'Slack deconnecte.' });
+                      setTimeout(() => setSlackResult(null), 3000);
+                    } catch (e) {
+                      setSlackResult({ ok: false, message: e.message });
+                    }
+                  }}
+                  className="text-xs text-red-500 font-bold hover:underline"
+                >
+                  Deconnecter
+                </button>
+              )}
+            </div>
+
+            {/* Connect via OAuth */}
+            {!slackConnected && (
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                  <p className="text-sm text-blue-800 font-medium">
+                    Connectez votre workspace Slack en un clic. Radar pourra lire les messages de vos channels pour detecter des opportunites.
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    Permissions demandees : lecture des channels et de leur historique.
+                  </p>
+                </div>
+                {slackResult && (
+                  <div className={`p-3 rounded-lg flex gap-3 ${slackResult.ok ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                    <span className={`material-symbols-outlined text-sm ${slackResult.ok ? 'text-green-500' : 'text-red-500'}`}>
+                      {slackResult.ok ? 'check_circle' : 'error'}
+                    </span>
+                    <p className={`text-xs ${slackResult.ok ? 'text-green-700' : 'text-red-700'}`}>{slackResult.message}</p>
+                  </div>
+                )}
+                <button
+                  onClick={async () => {
+                    try {
+                      const data = await getSlackAuthUrl();
+                      if (data.url) {
+                        window.location.href = data.url;
+                      }
+                    } catch (e) {
+                      setSlackResult({ ok: false, message: e.message });
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-3 bg-[#4A154B] hover:bg-[#3a1139] text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg"
+                >
+                  <svg width="20" height="20" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19.712.133a5.381 5.381 0 0 0-5.376 5.387 5.381 5.381 0 0 0 5.376 5.386h5.376V5.52A5.381 5.381 0 0 0 19.712.133m0 14.365H5.376A5.381 5.381 0 0 0 0 19.884a5.381 5.381 0 0 0 5.376 5.387h14.336a5.381 5.381 0 0 0 5.376-5.387 5.381 5.381 0 0 0-5.376-5.386" fill="#36C5F0"/>
+                    <path d="M53.76 19.884a5.381 5.381 0 0 0-5.376-5.386 5.381 5.381 0 0 0-5.376 5.386v5.387h5.376a5.381 5.381 0 0 0 5.376-5.387m-14.336 0V5.52A5.381 5.381 0 0 0 34.048.133a5.381 5.381 0 0 0-5.376 5.387v14.364a5.381 5.381 0 0 0 5.376 5.387 5.381 5.381 0 0 0 5.376-5.387" fill="#2EB67D"/>
+                    <path d="M34.048 54a5.381 5.381 0 0 0 5.376-5.387 5.381 5.381 0 0 0-5.376-5.386h-5.376v5.386A5.381 5.381 0 0 0 34.048 54m0-14.365h14.336a5.381 5.381 0 0 0 5.376-5.386 5.381 5.381 0 0 0-5.376-5.387H34.048a5.381 5.381 0 0 0-5.376 5.387 5.381 5.381 0 0 0 5.376 5.386" fill="#ECB22E"/>
+                    <path d="M0 34.249a5.381 5.381 0 0 0 5.376 5.386 5.381 5.381 0 0 0 5.376-5.386v-5.387H5.376A5.381 5.381 0 0 0 0 34.25m14.336 0v14.364A5.381 5.381 0 0 0 19.712 54a5.381 5.381 0 0 0 5.376-5.387V34.25a5.381 5.381 0 0 0-5.376-5.387 5.381 5.381 0 0 0-5.376 5.386" fill="#E01E5A"/>
+                  </svg>
+                  Connecter avec Slack
+                </button>
+              </div>
+            )}
+
+            {/* Success message after OAuth */}
+            {slackConnected && slackResult && (
+              <div className={`p-3 rounded-lg flex gap-3 ${slackResult.ok ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                <span className={`material-symbols-outlined text-sm ${slackResult.ok ? 'text-green-500' : 'text-red-500'}`}>
+                  {slackResult.ok ? 'check_circle' : 'error'}
+                </span>
+                <p className={`text-xs ${slackResult.ok ? 'text-green-700' : 'text-red-700'}`}>{slackResult.message}</p>
+              </div>
+            )}
+
+            {/* Slack Webhook URL for alerts */}
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Webhook URL pour alertes Slack</span>
+                <input
+                  className="rounded-lg border-slate-200 bg-background-light font-mono text-sm"
+                  placeholder="https://hooks.slack.com/services/T.../B.../..."
+                  type="text"
+                  value={slackWebhookUrl}
+                  onChange={(e) => setSlackWebhookUrl(e.target.value)}
+                />
+              </label>
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex gap-3">
+                <span className="material-symbols-outlined text-amber-500 text-sm">warning</span>
+                <p className="text-xs text-amber-700">Les opportunites detectees seront aussi envoyees sur ce channel Slack.</p>
+              </div>
+              {slackAlertResult && (
+                <div className={`p-3 rounded-lg flex gap-3 ${slackAlertResult.ok ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  <span className={`material-symbols-outlined text-sm ${slackAlertResult.ok ? 'text-green-500' : 'text-red-500'}`}>
+                    {slackAlertResult.ok ? 'check_circle' : 'error'}
+                  </span>
+                  <p className={`text-xs ${slackAlertResult.ok ? 'text-green-700' : 'text-red-700'}`}>{slackAlertResult.message}</p>
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      await updateProfile({ slack_webhook_url: slackWebhookUrl });
+                      setSlackAlertResult({ ok: true, message: 'Webhook sauvegarde.' });
+                      setTimeout(() => setSlackAlertResult(null), 3000);
+                    } catch (e) {
+                      setSlackAlertResult({ ok: false, message: e.message });
+                    }
+                  }}
+                  className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-2.5 px-6 rounded-lg transition-all shadow-md shadow-primary/20"
+                >
+                  Sauvegarder
+                </button>
+                <button
+                  onClick={async () => {
+                    setTestingSlackAlert(true);
+                    setSlackAlertResult(null);
+                    try {
+                      await updateProfile({ slack_webhook_url: slackWebhookUrl });
+                      const result = await testSlackAlert();
+                      setSlackAlertResult({ ok: true, message: result.message || 'Alerte Slack envoyee !' });
+                    } catch (e) {
+                      setSlackAlertResult({ ok: false, message: e.message });
+                    }
+                    setTestingSlackAlert(false);
+                  }}
+                  disabled={testingSlackAlert || !slackWebhookUrl}
+                  className="flex-1 flex items-center justify-center gap-2 border-2 border-primary text-primary font-bold py-2.5 px-6 rounded-lg hover:bg-primary/5 transition-all disabled:opacity-50"
+                >
+                  {testingSlackAlert ? (
+                    <><span className="animate-spin material-symbols-outlined text-sm">progress_activity</span> Envoi...</>
+                  ) : (
+                    <><span className="material-symbols-outlined text-sm">send</span> Tester l'alerte Slack</>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Slack channels */}
+            {slackConnected && (
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Channels Slack surveilles</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-slate-500">
+                      {slackChannels.length} channel{slackChannels.length > 1 ? 's' : ''}
+                    </span>
+                    <span className="text-sm font-bold text-primary">
+                      {slackChannels.filter(c => c.is_monitored).length} en ecoute
+                    </span>
+                    <button
+                      onClick={async () => {
+                        setSyncingSlack(true);
+                        try {
+                          const channels = await syncSlackChannels();
+                          setSlackChannels(Array.isArray(channels) ? channels : []);
+                        } catch {}
+                        setSyncingSlack(false);
+                      }}
+                      disabled={syncingSlack}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-all disabled:opacity-50"
+                    >
+                      <span className={`material-symbols-outlined text-sm ${syncingSlack ? 'animate-spin' : ''}`}>
+                        {syncingSlack ? 'progress_activity' : 'refresh'}
+                      </span>
+                      {syncingSlack ? 'Sync...' : 'Rafraichir'}
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Filtrer par nom..."
+                  value={slackChannelSearch}
+                  onChange={(e) => setSlackChannelSearch(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-primary focus:border-primary"
+                />
+                <div className="max-h-64 overflow-y-auto rounded-lg border border-slate-200">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 text-xs text-slate-500 uppercase font-semibold sticky top-0">
+                      <tr>
+                        <th className="px-4 py-3">Channel Slack</th>
+                        <th className="px-4 py-3 text-center">Monitoring</th>
+                        <th className="px-4 py-3">Membres</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {slackChannels
+                        .filter(c => c.name?.toLowerCase().includes(slackChannelSearch.toLowerCase()))
+                        .map((ch) => (
+                        <tr key={ch.id} className={ch.is_monitored ? 'bg-primary/5' : ''}>
+                          <td className="px-4 py-3 font-medium">#{ch.name}</td>
+                          <td className="px-4 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={ch.is_monitored}
+                              onChange={async () => {
+                                setSlackChannels(prev =>
+                                  prev.map(c => c.id === ch.id ? { ...c, is_monitored: !c.is_monitored } : c)
+                                );
+                                try {
+                                  await toggleSlackChannel(ch.id);
+                                } catch {
+                                  setSlackChannels(prev =>
+                                    prev.map(c => c.id === ch.id ? { ...c, is_monitored: !c.is_monitored } : c)
+                                  );
+                                }
+                              }}
+                              className="rounded text-primary focus:ring-primary w-5 h-5"
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-sm font-mono text-slate-400">{ch.num_members || 0}</td>
+                        </tr>
+                      ))}
+                      {slackChannels.length === 0 && (
+                        <tr>
+                          <td colSpan="3" className="px-4 py-6 text-center text-slate-400">Aucun channel Slack</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

@@ -113,6 +113,19 @@ export const createHubSpokeToken = () =>
 export const deleteHubSpokeToken = (id) =>
   request(`/api/admin/hub-spoke-tokens/${id}`, { method: 'DELETE' });
 
+// Slack
+export const getSlackAuthUrl = () => request('/api/slack/auth-url');
+export const getSlackStatus = () => request('/api/slack/status');
+export const disconnectSlack = () =>
+  request('/api/slack/disconnect', { method: 'DELETE' });
+export const getSlackChannels = () => request('/api/slack/channels');
+export const syncSlackChannels = () =>
+  request('/api/slack/channels/sync', { method: 'POST' });
+export const toggleSlackChannel = (channel_id) =>
+  request(`/api/slack/channels/${channel_id}/toggle`, { method: 'PUT' });
+export const testSlackAlert = () =>
+  request('/api/slack/test-alert', { method: 'POST' });
+
 // Webhook Stats
 export const getWebhookStats = () => request('/api/webhook-stats');
 

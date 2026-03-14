@@ -4,3 +4,5 @@ dist/
 target/
 *.log
 .DS_Store
+.env.production
+.mcp.json

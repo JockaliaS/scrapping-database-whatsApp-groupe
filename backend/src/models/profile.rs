@@ -17,6 +17,7 @@ pub struct Profile {
     pub alert_template: Option<String>,
     pub sharing_enabled: bool,
     pub onboarding_complete: bool,
+    pub slack_webhook_url: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -35,6 +36,7 @@ pub struct ProfileUpdate {
     pub alert_template: Option<String>,
     pub sharing_enabled: Option<bool>,
     pub onboarding_complete: Option<bool>,
+    pub slack_webhook_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

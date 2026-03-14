@@ -270,6 +270,24 @@ async fn process_message(
                                 }
                             }
                         }
+
+                        // Send Slack alert
+                        if let Some(slack_url) = &profile.slack_webhook_url {
+                            if !slack_url.is_empty() {
+                                let slack_svc = crate::services::slack::SlackService::new();
+                                let _ = crate::services::alerting::AlertService::send_slack_alert(
+                                    &slack_svc,
+                                    slack_url,
+                                    &opp,
+                                    &sender_name_owned,
+                                    &sender_phone_owned,
+                                    &group_name_owned,
+                                    &content,
+                                    &config.frontend_url,
+                                )
+                                .await;
+                            }
+                        }
                     }
                 }
                 Err(e) => {
@@ -596,4 +614,26 @@ async fn handle_evolution_event(
     }
 
     Ok(StatusCode::OK)
+}
+
+/// Public entry point for Slack messages to go through the shared processing pipeline.
+pub async fn process_message_from_slack(
+    state: &AppState,
+    channel_id: &str,
+    content: &str,
+    sender_slack_id: Option<&str>,
+    channel_name: Option<&str>,
+    timestamp: i64,
+) -> Result<(), AppError> {
+    process_message(
+        state,
+        channel_id,
+        content,
+        sender_slack_id,  // sender_name (Slack user ID)
+        None,             // sender_phone (N/A for Slack)
+        channel_name,
+        timestamp,
+        None,
+    )
+    .await
 }
