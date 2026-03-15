@@ -62,12 +62,19 @@ pub async fn connect(
         tracing::info!("[WhatsApp] connect: updated existing connection row");
     }
 
-    // Option A: auto-configure webhook on the new instance
+    // Auto-configure webhook on the new instance (set_webhook will refuse if one already exists)
     let webhook_url = format!("{}/webhook/whatsapp/{}", state.config.backend_url, user_id);
     tracing::info!("[WhatsApp] connect: auto-configuring webhook on instance={} url={}", instance_name, webhook_url);
     match evolution.set_webhook(&instance_name, &webhook_url).await {
         Ok(_) => tracing::info!("[WhatsApp] connect: webhook configured OK"),
-        Err(e) => tracing::warn!("[WhatsApp] connect: webhook configuration failed (will retry on next connect): {}", e),
+        Err(e) => {
+            let err_str = e.to_string();
+            if err_str.contains("already configured") {
+                tracing::info!("[WhatsApp] connect: webhook already exists on instance={}, keeping existing config", instance_name);
+            } else {
+                tracing::warn!("[WhatsApp] connect: webhook configuration failed: {}", e);
+            }
+        }
     }
 
     // Save webhook_url in DB

@@ -167,7 +167,25 @@ impl EvolutionService {
         result
     }
 
+    /// Set webhook on an instance. SAFETY: refuses to overwrite an existing active webhook.
+    /// Use `force_set_webhook` only if you explicitly need to replace an existing webhook.
     pub async fn set_webhook(&self, instance_name: &str, webhook_url: &str) -> anyhow::Result<Value> {
+        // SAFETY CHECK: never overwrite an existing webhook configuration
+        if let Ok(existing) = self.get_webhook(instance_name).await {
+            let existing_url = existing["url"].as_str().unwrap_or("");
+            let enabled = existing["enabled"].as_bool().unwrap_or(false);
+            if enabled && !existing_url.is_empty() {
+                tracing::warn!(
+                    "[Evolution] set_webhook BLOCKED — instance={} already has active webhook: {}. Refusing to overwrite.",
+                    instance_name, existing_url
+                );
+                anyhow::bail!(
+                    "Webhook already configured on instance '{}' (url: {}). Cannot overwrite existing configuration. Use the Evolution API dashboard to modify it manually.",
+                    instance_name, existing_url
+                );
+            }
+        }
+
         let url = format!("{}/webhook/set/{}", self.base_url, instance_name);
         tracing::info!("[Evolution] set_webhook instance={} url={}", instance_name, webhook_url);
         let resp = self.client
