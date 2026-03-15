@@ -356,7 +356,7 @@ pub async fn test_alert(
             &state.config.frontend_url,
         )
         .await
-        .map_err(|e| AppError::Internal(format!("Slack webhook error: {}", e)))?;
+        .map_err(|e| AppError::BadRequest(format!("Slack webhook error: {}", e)))?;
 
     Ok(Json(serde_json::json!({
         "message": "Alerte Slack envoyee avec succes !"

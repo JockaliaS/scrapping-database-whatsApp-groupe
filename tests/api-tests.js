@@ -833,13 +833,13 @@ async function testSlack() {
     `got ${channels.status}`
   );
 
-  // Test alert (will fail without webhook URL)
+  // Test alert (will fail without webhook URL or with invalid URL → 400)
   const testAlert = await request("POST", "/api/slack/test-alert", {
     token: authToken,
   });
   assert(
     testAlert.status === 200 || testAlert.status === 400,
-    "POST /api/slack/test-alert returns 200 or 400",
+    "POST /api/slack/test-alert returns 200 or 400 (no/invalid URL)",
     `got ${testAlert.status}`
   );
 }
