@@ -16,27 +16,34 @@ pub async fn init_pool(database_url: &str) -> PgPool {
 }
 
 pub async fn run_migrations(pool: &PgPool) {
-    let sql: &str = include_str!("../migrations/001_initial.sql");
-    for statement in sql.split(';') {
-        let trimmed: &str = statement.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        match sqlx::query(trimmed).execute(pool).await {
-            Ok(_) => {}
-            Err(e) => {
-                let err_str = e.to_string();
-                if err_str.contains("already exists")
-                    || err_str.contains("duplicate key")
-                {
-                    tracing::debug!("Migration skipped (already applied): {}", err_str);
-                } else {
-                    tracing::warn!("Migration statement error: {}", err_str);
+    let migrations: &[&str] = &[
+        include_str!("../migrations/001_initial.sql"),
+        include_str!("../migrations/002_slack.sql"),
+    ];
+
+    for (i, sql) in migrations.iter().enumerate() {
+        for statement in sql.split(';') {
+            let trimmed: &str = statement.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            match sqlx::query(trimmed).execute(pool).await {
+                Ok(_) => {}
+                Err(e) => {
+                    let err_str = e.to_string();
+                    if err_str.contains("already exists")
+                        || err_str.contains("duplicate key")
+                    {
+                        tracing::debug!("Migration {} skipped (already applied): {}", i + 1, err_str);
+                    } else {
+                        tracing::warn!("Migration {} statement error: {}", i + 1, err_str);
+                    }
                 }
             }
         }
+        tracing::info!("Migration {} applied", i + 1);
     }
-    tracing::info!("Database migrations applied");
+    tracing::info!("All database migrations applied");
 }
 
 /// Ensure admin user exists and password is up to date.
